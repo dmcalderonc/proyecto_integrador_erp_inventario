@@ -10,7 +10,7 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-  ) {}
+  ) { }
 
   async create(createUserDto: CreateUserDto): Promise<User> {
     const existingUser = await this.userRepository.findOne({
@@ -21,8 +21,14 @@ export class UsersService {
       throw new BadRequestException('El correo electrónico ya se encuentra registrado.');
     }
 
-    // Nota: Aquí se debería aplicar hashing a la contraseña antes de guardar (ej. bcrypt)
-    const newUser = this.userRepository.create(createUserDto);
+
+    const newUser = this.userRepository.create({
+      nombre: createUserDto.username,
+      email: createUserDto.email,
+      passwordHash: createUserDto.password,
+      rol: createUserDto.rol,
+    });
+
     return await this.userRepository.save(newUser);
   }
 
@@ -34,7 +40,7 @@ export class UsersService {
     const user = await this.userRepository.findOne({
       where: { id: id as any },
     });
-    
+
     if (!user) {
       throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
     }
@@ -43,9 +49,9 @@ export class UsersService {
 
   async update(id: number, updateUserDto: UpdateUserDto): Promise<User> {
     const user = await this.findOne(id);
-    
+
     if (updateUserDto.email && updateUserDto.email !== user.email) {
-      const emailExists = await this.userRepository.findOne({ 
+      const emailExists = await this.userRepository.findOne({
         where: { email: updateUserDto.email } as any
       });
       if (emailExists) {
@@ -53,7 +59,21 @@ export class UsersService {
       }
     }
 
-    const updatedUser = this.userRepository.merge(user, updateUserDto);
+    const dataToUpdate = {
+      ...(updateUserDto.username && { nombre: updateUserDto.username }),
+      ...(updateUserDto.email && { email: updateUserDto.email }),
+      ...(updateUserDto.password && { passwordHash: updateUserDto.password }),
+      ...(updateUserDto.rol && { rol: updateUserDto.rol }),
+    };
+
+    const updatedUser = this.userRepository.merge(user, dataToUpdate);
     return await this.userRepository.save(updatedUser);
   }
+
+  async remove(id: number): Promise<any> {
+  const user = await this.findOne(id);
+  const userDeleted = { id: user.id, nombre: user.nombre };
+  await this.userRepository.remove(user);
+  return userDeleted; 
+}
 }
