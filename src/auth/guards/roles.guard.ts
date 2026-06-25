@@ -12,7 +12,7 @@ export class RolesGuard implements CanActivate {
       context.getClass(),
     ]);
     if (!requiredRoles) {
-      return true; // Si la ruta no tiene el decorador @Roles, la deja pasar
+      return true; 
     }
     
     const { user } = context.switchToHttp().getRequest();

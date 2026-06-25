@@ -1,4 +1,3 @@
-// src/users/user.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 export enum UserRole {
@@ -8,7 +7,7 @@ export enum UserRole {
   COMPRADOR = 'COMPRADOR',
 }
 
-@Entity('users') // Nombre de la tabla en PostgreSQL
+@Entity('users') 
 export class User {
   @PrimaryGeneratedColumn()
   id?: string;
@@ -22,7 +21,7 @@ export class User {
   @Column({ type: 'varchar' })
   passwordHash?: string;
 
-  // Roles base para el sistema de requerimientos
+
   @Column({ type: 'enum', enum: ['ADMIN', 'SOLICITANTE', 'BODEGUERO', 'COMPRADOR'], default: 'SOLICITANTE' })
   rol?: string;
 

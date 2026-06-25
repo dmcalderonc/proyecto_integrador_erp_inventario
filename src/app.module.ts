@@ -1,4 +1,3 @@
-// src/app.module.ts
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -9,12 +8,10 @@ import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
-    // 1. Módulo para leer las variables del .env
     ConfigModule.forRoot({
       isGlobal: true,
     }),
 
-    // 2. Conexión a PostgreSQL (TypeORM)
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -30,7 +27,6 @@ import { AuthModule } from './auth/auth.module';
       }),
     }),
 
-    // 3. Conexión a MongoDB (Mongoose)
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -39,7 +35,6 @@ import { AuthModule } from './auth/auth.module';
       }),
     }),
 
-    // Módulos de nuestra aplicación
     UsersModule,
     AuditoriaModule,
     AuthModule,

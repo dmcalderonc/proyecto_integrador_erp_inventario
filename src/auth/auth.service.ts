@@ -12,29 +12,41 @@ export class AuthService {
   ) {}
 
   async login(loginDto: LoginDto) {
-    // 1. Buscar usuario
+    if (!loginDto.email || !loginDto.password) {
+      throw new UnauthorizedException('Email y contraseña son requeridos');
+    }
+
     const user = await this.usersService.findByEmailForLogin(loginDto.email);
-    if (!user) {
+    
+
+    if (!user || !user.passwordHash) {
       throw new UnauthorizedException('Credenciales incorrectas');
     }
 
-    // 2. Verificar contraseña con bcrypt
-    const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
+    const isPasswordValid = await bcrypt.compare(loginDto.password, user.passwordHash);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Credenciales incorrectas');
     }
 
-    // 3. Verificar si está activo
-    if (!user.is_active) {
+    if ((user as any).is_active !== undefined && !(user as any).is_active) {
       throw new UnauthorizedException('El usuario está desactivado');
     }
 
-    // 4. Generar Payload del Token
-    const payload = { sub: user.id, email: user.email, rol: user.rol, bodega_id: user.bodega_id };
+
+    const payload = { 
+      sub: user.id, 
+      email: user.email, 
+      rol: user.rol, 
+      bodega_id: (user as any).bodega_id 
+    };
     
     return {
       access_token: this.jwtService.sign(payload),
-      user: { id: user.id, username: user.username, rol: user.rol }
+      user: { 
+        id: user.id, 
+        username: user.nombre, 
+        rol: user.rol 
+      }
     };
   }
 }
