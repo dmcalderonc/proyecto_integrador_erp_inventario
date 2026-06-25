@@ -1,9 +1,16 @@
 // src/users/user.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
+export enum UserRole {
+  ADMIN = 'ADMIN',
+  SOLICITANTE = 'SOLICITANTE',
+  BODEGUERO = 'BODEGUERO',
+  COMPRADOR = 'COMPRADOR',
+}
+
 @Entity('users') // Nombre de la tabla en PostgreSQL
 export class User {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn()
   id?: string;
 
   @Column({ type: 'varchar', length: 150 })
