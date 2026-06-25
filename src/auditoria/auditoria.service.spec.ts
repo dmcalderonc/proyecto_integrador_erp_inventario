@@ -1,12 +1,27 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuditoriaService } from './auditoria.service';
+import { getModelToken } from '@nestjs/mongoose';
+import { AuditoriaLog } from './auditoria.schema';
 
 describe('AuditoriaService', () => {
   let service: AuditoriaService;
 
+  // Creamos un simulador para el modelo de Mongoose
+  const mockAuditoriaModel = {
+    new: jest.fn().mockImplementation((dto) => dto),
+    save: jest.fn().mockResolvedValue(true),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [AuditoriaService],
+      providers: [
+        AuditoriaService,
+        {
+          // ESTO ES LO QUE FALTABA: Inyectar el token del modelo
+          provide: getModelToken(AuditoriaLog.name),
+          useValue: mockAuditoriaModel,
+        },
+      ],
     }).compile();
 
     service = module.get<AuditoriaService>(AuditoriaService);

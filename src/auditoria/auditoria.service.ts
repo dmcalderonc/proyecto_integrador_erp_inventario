@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { AuditoriaLog } from 'src/auditoria/auditoria.schema';
+import { AuditoriaLog } from './auditoria.schema';
 
 @Injectable()
 export class AuditoriaService {
