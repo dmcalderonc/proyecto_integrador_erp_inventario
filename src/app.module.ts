@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { MongooseModule } from '@nestjs/mongoose';
 import { UsersModule } from './users/users.module';
 import { AuditoriaModule } from './auditoria/auditoria.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { AuditoriaModule } from './auditoria/auditoria.module';
     // Módulos de nuestra aplicación
     UsersModule,
     AuditoriaModule,
+    AuthModule,
   ],
 })
 export class AppModule {}
