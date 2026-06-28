@@ -1,5 +1,5 @@
 import { IsString, IsNotEmpty, IsOptional, IsDateString, IsEnum } from 'class-validator';
-import { EstadoProyecto } from '../entities/proyecto.entity';
+import { EstadoProyecto } from '../proyecto.entity';
 
 export class CreateProyectoDto {
   @IsString()

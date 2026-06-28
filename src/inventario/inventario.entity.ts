@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
-import { Material } from '../../materiales/material.entity'; 
-import { Bodega } from '../../bodegas/entities/bodegas.entity';     
+import { Material } from '../materiales/material.entity'; 
+import { Bodega } from '../bodegas/bodegas.entity';     
 
 @Entity('stock_bodega')
 export class Inventario {

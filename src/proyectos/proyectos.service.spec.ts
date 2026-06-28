@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ProyectosService } from './proyectos.service';
 import { DataSource } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Proyecto } from './entities/proyecto.entity';
+import { Proyecto } from './proyecto.entity';
 import { BodegasService } from '../bodegas/bodegas.service';
 
 describe('ProyectosService', () => {
