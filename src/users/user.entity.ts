@@ -19,7 +19,7 @@ export class User {
   email?: string;
 
   @Column({ type: 'varchar' })
-  passwordHash?: string;
+  password?: string;
 
 
   @Column({ type: 'enum', enum: ['ADMIN', 'SOLICITANTE', 'BODEGUERO', 'COMPRADOR'], default: 'SOLICITANTE' })
