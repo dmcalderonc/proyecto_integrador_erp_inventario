@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
-import { Material } from '../../material/entities/material.entity';
-import { Bodega } from '../../bodega/entities/bodega.entity';
+import { Material } from '../../materiales/material.entity'; 
+//import { Bodega } from '../../bodega/bodega.entity';     
 
 @Entity('stock_bodega')
 export class Inventario {
@@ -23,7 +23,7 @@ export class Inventario {
   @JoinColumn({ name: 'material_id' })
   material: Material;
 
-  @ManyToOne(() => Bodega, (bodega) => bodega.id)
-  @JoinColumn({ name: 'bodega_id' })
-  bodega: Bodega;
+//  @ManyToOne(() => Bodega, (bodega) => bodega.id)
+ // @JoinColumn({ name: 'bodega_id' })
+ // bodega: Bodega;
 }

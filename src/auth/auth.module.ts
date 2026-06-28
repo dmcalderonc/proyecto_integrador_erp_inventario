@@ -8,7 +8,7 @@ import { JwtStrategy } from './jwt.strategy';
 
 @Module({
   imports: [
-    UsersModule, // Necesario para buscar usuarios al loguear
+    UsersModule, 
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'super_secreto_para_erp_inventario_2026',

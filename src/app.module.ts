@@ -1,4 +1,3 @@
-// src/app.module.ts
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -8,16 +7,13 @@ import { AuditoriaModule } from './auditoria/auditoria.module';
 import { AuthModule } from './auth/auth.module';
 import { ProveedoresModule } from './proveedores/proveedores.module';
 import { InventarioModule } from './inventario/inventario.module';
+import { CategoriasModule } from './categorias/categorias.module';
+import { MaterialesModule } from './materiales/materiales.module';
 
 @Module({
   imports: [
-    // 1. Módulo para leer las variables del .env
-    ConfigModule.forRoot({
-      isGlobal: true,
-    }),
-
-    // 2. Conexión a PostgreSQL (TypeORM)
-    TypeOrmModule.forRootAsync({
+    ConfigModule.forRoot({ isGlobal: true }),
+      TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
@@ -27,12 +23,10 @@ import { InventarioModule } from './inventario/inventario.module';
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
-        autoLoadEntities: true, 
-        synchronize: true, 
+        autoLoadEntities: true,
+        synchronize: true,
       }),
     }),
-
-    // 3. Conexión a MongoDB (Mongoose)
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -40,13 +34,13 @@ import { InventarioModule } from './inventario/inventario.module';
         uri: configService.get<string>('MONGO_URI'),
       }),
     }),
-
-    // Módulos de nuestra aplicación
     UsersModule,
     AuditoriaModule,
     AuthModule,
     ProveedoresModule,
     InventarioModule,
+    CategoriasModule,
+    MaterialesModule,
   ],
 })
 export class AppModule {}

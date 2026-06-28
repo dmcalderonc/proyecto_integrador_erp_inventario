@@ -1,14 +1,14 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
 import { ProveedoresService } from './proveedores.service';
-import { CreateProveedoreDto } from './dto/create-proveedore.dto';
-import { UpdateProveedoreDto } from './dto/update-proveedore.dto';
+import { CreateProveedorDto } from './dto/create-proveedor.dto';
+import { UpdateProveedoreDto } from './dto/update-proveedor.dto';
 
 @Controller('proveedores')
 export class ProveedoresController {
   constructor(private readonly proveedoresService: ProveedoresService) {}
 
   @Post()
-  create(@Body() createProveedoreDto: CreateProveedoreDto) {
+  create(@Body() createProveedoreDto: CreateProveedorDto) {
     return this.proveedoresService.create(createProveedoreDto);
   }
 
