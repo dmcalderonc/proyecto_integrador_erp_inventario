@@ -17,27 +17,40 @@ export class AuthService {
     }
 
     const user = await this.usersService.findByEmailForLogin(loginDto.email);
-    
 
-    if (!user || !user.passwordHash) {
+    if (!user || !user.password) {
       throw new UnauthorizedException('Credenciales incorrectas');
     }
 
-    const isPasswordValid = await bcrypt.compare(loginDto.password, user.passwordHash);
+    let isPasswordValid = false;
+    try {
+      isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
+    } catch (error) {
+      isPasswordValid = false;
+    }
+
+    if (!isPasswordValid) {
+      isPasswordValid = loginDto.password === user.password;
+    }
+
     if (!isPasswordValid) {
       throw new UnauthorizedException('Credenciales incorrectas');
     }
 
-    if ((user as any).is_active !== undefined && !(user as any).is_active) {
+    const userAny = user as any;
+    if (userAny.is_active !== undefined && !userAny.is_active) {
+      throw new UnauthorizedException('El usuario está desactivado');
+    }
+    if (userAny.estado !== undefined && !userAny.estado) {
       throw new UnauthorizedException('El usuario está desactivado');
     }
 
-
     const payload = { 
+      id: user.id, 
       sub: user.id, 
       email: user.email, 
       rol: user.rol, 
-      bodega_id: (user as any).bodega_id 
+      bodega_id: userAny.bodega_id 
     };
     
     return {

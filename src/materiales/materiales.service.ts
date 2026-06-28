@@ -1,6 +1,8 @@
-import { Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { DataSource, Repository } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
 import { CreateMaterialDto } from './dto/create-material.dto';
+import { UpdateMaterialDto } from './dto/update-material.dto';
 import { Material } from './material.entity';
 import { Categoria } from '../categorias/categoria.entity';
 import { AuditoriaService } from '../auditoria/auditoria.service';
@@ -8,13 +10,14 @@ import { AuditoriaService } from '../auditoria/auditoria.service';
 @Injectable()
 export class MaterialesService {
   constructor(
+    @InjectRepository(Material)
+    private readonly materialRepository: Repository<Material>,
     private readonly dataSource: DataSource,
     private readonly auditoriaService: AuditoriaService,
   ) { }
 
   async create(createMaterialDto: CreateMaterialDto, usuarioId: number): Promise<Material> {
     const queryRunner = this.dataSource.createQueryRunner();
-
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
@@ -47,7 +50,6 @@ export class MaterialesService {
       const numeroFormateado = String(consecutivo).padStart(4, '0');
       const nuevoSku = `${categoria.prefijo.toUpperCase()}-${numeroFormateado}`;
 
-      
       const nuevoMaterial = queryRunner.manager.create(Material, {
         nombre: createMaterialDto.nombre,
         descripcion: createMaterialDto.descripcion,
@@ -57,7 +59,6 @@ export class MaterialesService {
       });
 
       const materialGuardado = await queryRunner.manager.save(nuevoMaterial);
-
       await queryRunner.commitTransaction();
 
       try {
@@ -77,12 +78,78 @@ export class MaterialesService {
       }
 
       return materialGuardado;
-
     } catch (error) {
       await queryRunner.rollbackTransaction();
       throw error;
     } finally {
       await queryRunner.release();
     }
+  }
+
+  async findAll(): Promise<Material[]> {
+    return await this.materialRepository.find({
+      relations: {
+        categoria: true,
+      },
+    });
+  }
+
+  async findOne(id: number): Promise<Material> {
+    const material = await this.materialRepository.findOne({
+      where: { id },
+      relations: {
+        categoria: true,
+      },
+    });
+
+    if (!material) {
+      throw new NotFoundException(`El material con ID ${id} no existe.`);
+    }
+
+    return material;
+  }
+
+  async update(id: number, updateMaterialDto: UpdateMaterialDto, usuarioId: number): Promise<Material> {
+    const material = await this.findOne(id);
+    
+    if ('sku' in (updateMaterialDto as any)) {
+      throw new BadRequestException('El SKU es generado automáticamente por el sistema y no puede ser alterado.');
+    }
+
+    const materialActualizado = this.materialRepository.merge(material, updateMaterialDto);
+    const guardado = await this.materialRepository.save(materialActualizado);
+
+    try {
+      await this.auditoriaService.registrarAccion(
+        usuarioId.toString(),
+        'ACTUALIZAR_MATERIAL',
+        'Materiales',
+        { materialId: id, sku: guardado.sku, cambios: updateMaterialDto }
+      );
+    } catch (auditError) {
+      console.error('Error al auditar actualización:', auditError);
+    }
+
+    return guardado;
+  }
+
+  async remove(id: number, usuarioId: number): Promise<{ message: string }> {
+    const material = await this.findOne(id);
+    const skuEliminado = material.sku;
+
+    await this.materialRepository.remove(material);
+
+    try {
+      await this.auditoriaService.registrarAccion(
+        usuarioId.toString(),
+        'ELIMINAR_MATERIAL',
+        'Materiales',
+        { materialId: id, sku: skuEliminado, nombre: material.nombre }
+      );
+    } catch (auditError) {
+      console.error('Error al auditar eliminación:', auditError);
+    }
+
+    return { message: `El material con SKU ${skuEliminado} ha sido eliminado.` };
   }
 }

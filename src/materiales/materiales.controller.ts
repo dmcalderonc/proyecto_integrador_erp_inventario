@@ -1,7 +1,8 @@
-import { Controller, Post, Body, UseGuards, Req } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Req, Get, Put, Param, Delete } from '@nestjs/common';
 import { MaterialesService } from './materiales.service';
 import { CreateMaterialDto } from './dto/create-material.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'; // Tu guard de autenticación
+import { UpdateMaterialDto } from './dto/update-material.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'; 
 
 @Controller('materiales')
 export class MaterialesController {
@@ -10,8 +11,35 @@ export class MaterialesController {
   @UseGuards(JwtAuthGuard)
   @Post()
   async create(@Body() createMaterialDto: CreateMaterialDto, @Req() req: any) {
-    // Obtenemos el ID del usuario autenticado a través de la petición (inyectado por el JwtStrategy)
     const usuarioId = req.user.id; 
     return this.materialesService.create(createMaterialDto, usuarioId);
+  }
+
+  @Get()
+  async findAll() {
+    return this.materialesService.findAll();
+  }
+
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    return this.materialesService.findOne(+id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put(':id')
+  async update(
+    @Param('id') id: string, 
+    @Body() updateMaterialDto: UpdateMaterialDto,
+    @Req() req: any
+  ) {
+    const usuarioId = req.user.id;
+    return this.materialesService.update(+id, updateMaterialDto, usuarioId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id')
+  async remove(@Param('id') id: string, @Req() req: any) {
+    const usuarioId = req.user.id;
+    return this.materialesService.remove(+id, usuarioId);
   }
 }

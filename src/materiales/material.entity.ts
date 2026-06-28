@@ -13,7 +13,7 @@ export class Material {
   descripcion: string;
 
   @Column({ unique: true })
-  sku: string; // Ej: "ACE-0001"
+  sku: string; 
 
   @Column({ type: 'enum', enum: ['U', 'KG', 'M', 'M2'] })
   unidad_medida: string;
