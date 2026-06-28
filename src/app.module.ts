@@ -9,24 +9,30 @@ import { ProveedoresModule } from './proveedores/proveedores.module';
 import { InventarioModule } from './inventario/inventario.module';
 import { CategoriasModule } from './categorias/categorias.module';
 import { MaterialesModule } from './materiales/materiales.module';
+import { ProyectosModule } from './proyectos/proyectos.module';
+import { BodegasModule } from './bodegas/bodegas.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-      TypeOrmModule.forRootAsync({
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+
+    TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
         host: configService.get<string>('DB_HOST'),
-        port: configService.get<number>('DB_PORT'),
+        port: configService.get<number>('DB_PORT', 5432),
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
-        autoLoadEntities: true,
-        synchronize: true,
+        autoLoadEntities: true, 
+        synchronize: true, 
       }),
     }),
+
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -34,13 +40,15 @@ import { MaterialesModule } from './materiales/materiales.module';
         uri: configService.get<string>('MONGO_URI'),
       }),
     }),
+
     UsersModule,
     AuditoriaModule,
     AuthModule,
-    ProveedoresModule,
-    InventarioModule,
     CategoriasModule,
     MaterialesModule,
+    ProyectosModule,
+    BodegasModule,
+    InventarioModule,
   ],
 })
 export class AppModule {}
