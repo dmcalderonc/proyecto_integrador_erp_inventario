@@ -25,4 +25,7 @@ export class Proveedor {
 
   @CreateDateColumn()
   fechaCreacion?: Date;
+
+  @UpdateDateColumn()
+  fechaActualizacion?: Date;
 }

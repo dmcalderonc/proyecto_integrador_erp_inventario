@@ -1,8 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
-
-// Aquí debes poner las rutas reales donde tus compañeros crearon sus entidades.
-// Si no sabes dónde están, busca en tu proyecto carpetas que digan 'material' y 'bodega'.
-import { Material } from '../../material/entities/material.entity'; 
+import { Material } from '../../material/entities/material.entity';
 import { Bodega } from '../../bodega/entities/bodega.entity';
 
 @Entity('stock_bodega')
@@ -22,11 +19,11 @@ export class Inventario {
   @Column({ type: 'int', default: 0 })
   cantidad_reservada?: number;
 
-  @ManyToOne(() => Material)
+  @ManyToOne(() => Material, (material) => material.id)
   @JoinColumn({ name: 'material_id' })
   material: Material;
 
-  @ManyToOne(() => Bodega)
+  @ManyToOne(() => Bodega, (bodega) => bodega.id)
   @JoinColumn({ name: 'bodega_id' })
   bodega: Bodega;
 }
