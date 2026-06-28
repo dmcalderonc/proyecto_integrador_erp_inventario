@@ -7,6 +7,8 @@ import { AuditoriaModule } from './auditoria/auditoria.module';
 import { AuthModule } from './auth/auth.module';
 import { CategoriasModule } from './categorias/categorias.module';
 import { MaterialesModule } from './materiales/materiales.module';
+import { ProyectosModule } from './proyectos/proyectos.module';
+import { BodegasModule } from './bodegas/bodegas.module';
 
 @Module({
   imports: [
@@ -42,6 +44,8 @@ import { MaterialesModule } from './materiales/materiales.module';
     AuthModule,
     CategoriasModule,
     MaterialesModule,
+    ProyectosModule,
+    BodegasModule,
   ],
 })
 export class AppModule {}
