@@ -1,35 +1,37 @@
-import { Controller } from '@nestjs/common';
-import { MessagePattern, Payload } from '@nestjs/microservices';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe } from '@nestjs/common';
 import { BodegasService } from './bodegas.service';
-import { CreateBodegasDto } from './dto/create-bodegas.dto';
+import { CreateBodegaDto } from './dto/create-bodegas.dto';
 import { UpdateBodegasDto } from './dto/update-bodegas.dto';
 
-@Controller()
+@Controller('bodegas') 
 export class BodegasController {
   constructor(private readonly bodegasService: BodegasService) {}
 
-  @MessagePattern('createBodegas')
-  create(@Payload() createBodegasDto: CreateBodegasDto) {
-    return this.bodegasService.create(createBodegasDto);
+  @Post()
+  create(@Body() createBodegaDto: CreateBodegaDto) {
+    return this.bodegasService.create(createBodegaDto);
   }
 
-  @MessagePattern('findAllBodegas')
+  @Get()
   findAll() {
     return this.bodegasService.findAll();
   }
 
-  @MessagePattern('findOneBodegas')
-  findOne(@Payload() id: number) {
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number) {
     return this.bodegasService.findOne(id);
   }
 
-  @MessagePattern('updateBodegas')
-  update(@Payload() updateBodegasDto: UpdateBodegasDto) {
-    return this.bodegasService.update(updateBodegasDto.id, updateBodegasDto);
+  @Patch(':id')
+  update(
+    @Param('id', ParseIntPipe) id: number, 
+    @Body() updateBodegasDto: UpdateBodegasDto
+  ) {
+    return this.bodegasService.update(id, updateBodegasDto);
   }
 
-  @MessagePattern('removeBodegas')
-  remove(@Payload() id: number) {
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number) {
     return this.bodegasService.remove(id);
   }
 }

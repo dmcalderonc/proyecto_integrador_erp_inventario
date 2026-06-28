@@ -5,6 +5,7 @@ import { Proyecto } from './entities/proyecto.entity';
 import { CreateProyectoDto } from './dto/create-proyecto.dto';
 import { UpdateProyectoDto } from './dto/update-proyecto.dto';
 import { BodegasService } from '../bodegas/bodegas.service';
+import { NotFoundException } from '@nestjs/common';
 
 @Injectable()
 export class ProyectosService {
@@ -13,7 +14,7 @@ export class ProyectosService {
     private readonly proyectoRepository: Repository<Proyecto>,
     private readonly dataSource: DataSource,
     private readonly bodegasService: BodegasService,
-  ) {}
+  ) { }
 
   async create(createProyectoDto: CreateProyectoDto) {
     const queryRunner = this.dataSource.createQueryRunner();
@@ -49,11 +50,19 @@ export class ProyectosService {
   }
 
   async findAll(): Promise<Proyecto[]> {
-    return await this.proyectoRepository.find({ relations: ['bodega'] });
+    return await this.proyectoRepository.find({ relations: { bodega: true } });
   }
 
   async findOne(id: string): Promise<Proyecto> {
-    return await this.proyectoRepository.findOne({ where: { id }, relations: ['bodega'] });
+    const proyecto = await this.proyectoRepository.findOne({
+      where: { id },
+      relations: { bodega: true }
+    });
+    
+    if (!proyecto) {
+      throw new NotFoundException(`Proyecto con ID ${id} no encontrado`);
+    }
+    return proyecto;
   }
 
   async update(id: string, updateProyectoDto: UpdateProyectoDto): Promise<Proyecto> {

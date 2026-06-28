@@ -1,21 +1,21 @@
-import { Injectable } from '@nestjs/injectable';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, EntityManager } from 'typeorm';
-import { Bodega } from './entities/bodega.entity';
-import { CreateBodegaDto } from './dto/create-bodega.dto';
+import { Bodega } from './bodegas.entity';
+import { CreateBodegaDto } from './dto/create-bodegas.dto';
+import { UpdateBodegasDto } from './dto/update-bodegas.dto';
 
 @Injectable()
 export class BodegasService {
   constructor(
     @InjectRepository(Bodega)
     private readonly bodegaRepository: Repository<Bodega>,
-  ) {}
+  ) { }
 
-  // Permite guardar usando el manager de una transacción externa si existe
-  async create(createBodegaDto: CreateBodegaDto, transactionalManager?: EntityManager): Promise<Bodega> {
-    const repository = transactionalManager ? transactionalManager.getRepository(Bodega) : this.bodegaRepository;
-    const nuevaBodega = repository.create(createBodegaDto);
-    return await repository.save(nuevaBodega);
+  async create(createBodegaDto: any, manager?: any) {
+    const repo = manager ? manager.getRepository(Bodega) : this.bodegaRepository;
+    const bodega = repo.create(createBodegaDto);
+    return await repo.save(bodega);
   }
 
   async findAll(): Promise<Bodega[]> {
@@ -23,6 +23,30 @@ export class BodegasService {
   }
 
   async findOne(id: number): Promise<Bodega> {
-    return await this.bodegaRepository.findOne({ where: { id } });
+    const bodega = await this.bodegaRepository.findOneBy({ id });
+    if (!bodega) {
+      throw new NotFoundException(`Bodega con ID ${id} no encontrada`);
+    }
+    return bodega;
   }
+  async update(id: number, updateDto: UpdateBodegasDto) {
+    const bodega = await this.bodegaRepository.preload({
+      id,          
+      ...updateDto, 
+    });
+
+    if (!bodega) {
+      throw new NotFoundException(`Bodega con ID ${id} no encontrada`);
+    }
+
+    return await this.bodegaRepository.save(bodega);
+  }
+
+  async remove(id: number) {
+    const bodega = await this.findOne(id);
+    return await this.bodegaRepository.remove(bodega);
+  }
+
+
+
 }

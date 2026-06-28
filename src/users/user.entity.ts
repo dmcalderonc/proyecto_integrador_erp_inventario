@@ -9,8 +9,8 @@ export enum UserRole {
 
 @Entity('users') 
 export class User {
-  @PrimaryGeneratedColumn()
-  id?: string;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ type: 'varchar', length: 150 })
   nombre?: string;
@@ -22,8 +22,8 @@ export class User {
   password?: string;
 
 
-  @Column({ type: 'enum', enum: ['ADMIN', 'SOLICITANTE', 'BODEGUERO', 'COMPRADOR'], default: 'SOLICITANTE' })
-  rol?: string;
+  @Column({ type: 'enum', enum: UserRole, default: UserRole.SOLICITANTE })
+  rol: UserRole;
 
   @Column({ type: 'boolean', default: true })
   estado?: boolean;

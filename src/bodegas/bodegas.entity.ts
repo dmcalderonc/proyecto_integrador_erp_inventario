@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn } from 'typeorm';
-import { Proyecto } from '../../proyectos/entities/proyecto.entity';
+import { Proyecto } from '../proyectos/entities/proyecto.entity';
 
 @Entity('bodegas')
 export class Bodega {

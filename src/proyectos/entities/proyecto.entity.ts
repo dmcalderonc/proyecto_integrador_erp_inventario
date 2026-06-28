@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToOne } from 'typeorm';
-import { Bodega } from '../../bodegas/entities/bodega.entity';
+import { Bodega } from '../../bodegas/bodegas.entity';
 
 export enum EstadoProyecto {
   ACTIVO = 'ACTIVO',
