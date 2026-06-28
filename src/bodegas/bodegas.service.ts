@@ -1,26 +1,28 @@
-import { Injectable } from '@nestjs/common';
-import { CreateBodegasDto } from './dto/create-bodegas.dto';
-import { UpdateBodegasDto } from './dto/update-bodegas.dto';
+import { Injectable } from '@nestjs/injectable';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, EntityManager } from 'typeorm';
+import { Bodega } from './entities/bodega.entity';
+import { CreateBodegaDto } from './dto/create-bodega.dto';
 
 @Injectable()
 export class BodegasService {
-  create(createBodegasDto: CreateBodegasDto) {
-    return 'This action adds a new bodegas';
+  constructor(
+    @InjectRepository(Bodega)
+    private readonly bodegaRepository: Repository<Bodega>,
+  ) {}
+
+  // Permite guardar usando el manager de una transacción externa si existe
+  async create(createBodegaDto: CreateBodegaDto, transactionalManager?: EntityManager): Promise<Bodega> {
+    const repository = transactionalManager ? transactionalManager.getRepository(Bodega) : this.bodegaRepository;
+    const nuevaBodega = repository.create(createBodegaDto);
+    return await repository.save(nuevaBodega);
   }
 
-  findAll() {
-    return `This action returns all bodegas`;
+  async findAll(): Promise<Bodega[]> {
+    return await this.bodegaRepository.find();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} bodegas`;
-  }
-
-  update(id: number, updateBodegasDto: UpdateBodegasDto) {
-    return `This action updates a #${id} bodegas`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} bodegas`;
+  async findOne(id: number): Promise<Bodega> {
+    return await this.bodegaRepository.findOne({ where: { id } });
   }
 }
