@@ -14,7 +14,7 @@ export class OrdenCompra {
 
   @Column({
     type: 'enum',
-    enum: ['BORRADOR', 'EMITIDA', 'RECIBIDA', 'CANCELADA'],
+    enum: ['BORRADOR', 'EMITIDA', 'RECIBIDA', 'CANCELADA','PENDIENTE'],
     default: 'BORRADOR'
   })
   estado?: string;

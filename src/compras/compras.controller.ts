@@ -27,14 +27,15 @@ export class ComprasController {
     return this.comprasService.update(+id, updateCompraDto);
   }
 
+
+  @Patch(':id/recibir')
+async recibir(@Param('id') id: string) {
+
+  return await this.comprasService.recibirOrden(+id, '550e8400-e29b-41d4-a716-446655440000'); 
+}
+
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.comprasService.remove(+id);
   }
-
-  @Patch(':id/recibir')
-  async recibirOrden(@Param('id') id: string) {
-  return await this.comprasService.recibirOrden(+id);
 }
-}
-
