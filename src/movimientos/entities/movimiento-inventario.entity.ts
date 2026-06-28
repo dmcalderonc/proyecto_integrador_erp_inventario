@@ -17,41 +17,41 @@ export enum EstadoMovimiento {
 @Entity('movimientos_inventario')
 export class MovimientoInventario {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id?: string;
 
   @Column({ type: 'enum', enum: TipoMovimiento })
-  tipo: TipoMovimiento;
+  tipo?: TipoMovimiento;
 
   @CreateDateColumn({ name: 'fecha' })
-  fecha: Date;
+  fecha?: Date;
 
   @Column({ type: 'text', nullable: true })
-  observaciones: string;
+  observaciones?: string;
 
   @Column({ name: 'usuario_id', type: 'uuid' })
-  usuarioId: string;
+  usuarioId?: string;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'usuario_id' })
-  usuario: User;
+  usuario?: User;
 
   @Column({ name: 'bodega_origen_id', type: 'integer', nullable: true })
-  bodegaOrigenId: number;
+  bodegaOrigenId?: number;
 
   @ManyToOne(() => Bodega)
   @JoinColumn({ name: 'bodega_origen_id' })
-  bodegaOrigen: Bodega;
+  bodegaOrigen?: Bodega;
 
   @Column({ name: 'bodega_destino_id', type: 'integer', nullable: true })
-  bodegaDestinoId: number;
+  bodegaDestinoId?: number;
 
   @ManyToOne(() => Bodega)
   @JoinColumn({ name: 'bodega_destino_id' })
-  bodegaDestino: Bodega;
+  bodegaDestino?: Bodega;
 
   @Column({ type: 'enum', enum: EstadoMovimiento, default: EstadoMovimiento.PROCESADO })
-  estado: EstadoMovimiento;
+  estado?: EstadoMovimiento;
 
   @OneToMany(() => DetalleMovimiento, (detalle) => detalle.movimiento, { cascade: true })
-  detalles: DetalleMovimiento[];
+  detalles?: DetalleMovimiento[];
 }
