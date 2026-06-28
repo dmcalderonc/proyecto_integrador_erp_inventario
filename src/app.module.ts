@@ -6,6 +6,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { UsersModule } from './users/users.module';
 import { AuditoriaModule } from './auditoria/auditoria.module';
 import { AuthModule } from './auth/auth.module';
+import { ProveedoresModule } from './proveedores/proveedores.module';
+import { InventarioModule } from './inventario/inventario.module';
 
 @Module({
   imports: [
@@ -43,6 +45,8 @@ import { AuthModule } from './auth/auth.module';
     UsersModule,
     AuditoriaModule,
     AuthModule,
+    ProveedoresModule,
+    InventarioModule,
   ],
 })
 export class AppModule {}
