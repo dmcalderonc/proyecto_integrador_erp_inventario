@@ -12,6 +12,8 @@ import { MaterialesModule } from './materiales/materiales.module';
 import { ProyectosModule } from './proyectos/proyectos.module';
 import { BodegasModule } from './bodegas/bodegas.module';
 import { MovimientosModule } from './movimientos/movimientos.module';
+import { RequirementsModule } from './requirements/requirements.module';
+import { ProyectoUsuario } from './users/proyecto-usuario.entity';
 
 @Module({
   imports: [
@@ -51,6 +53,8 @@ import { MovimientosModule } from './movimientos/movimientos.module';
     BodegasModule,
     InventarioModule,
     MovimientosModule,
+    RequirementsModule,
+    ProyectoUsuario,
   ],
 })
 export class AppModule {}

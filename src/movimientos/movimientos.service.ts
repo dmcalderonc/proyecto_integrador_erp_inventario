@@ -1,27 +1,29 @@
-import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, BadRequestException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+
 import { Repository, DataSource } from 'typeorm';
 import { CreateMovimientoDto } from './dto/create-movimiento.dto';
 import { MovimientoInventario, TipoMovimiento, EstadoMovimiento } from './entities/movimiento-inventario.entity';
 import { DetalleMovimiento } from './entities/detalle-movimiento.entity';
-import { Inventario } from '../inventario/inventario.entity'; 
+import { Inventario } from '../inventario/inventario.entity';
 import { AuditoriaService } from '../auditoria/auditoria.service';
+import { Requirement, RequirementStatus } from 'src/requirements/entities/requirement.entity';
 
 @Injectable()
 export class MovimientosService {
   constructor(
     private readonly dataSource: DataSource,
     private readonly auditoriaService: AuditoriaService,
-  ) {}
+    @InjectRepository(Requirement)
+    private readonly reqRepository: Repository<Requirement>,
+  ) { }
 
   async registrarMovimiento(dto: CreateMovimientoDto, usuarioId: string) {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
-    // READ COMMITTED con transaccionalidad estricta
     await queryRunner.startTransaction('READ COMMITTED');
 
     try {
-      // 1. Validaciones Lógicas de Bodegas
       if (dto.tipo === TipoMovimiento.INGRESO && !dto.bodegaDestinoId) {
         throw new BadRequestException('El INGRESO requiere una bodega de destino obligatoria.');
       }
@@ -32,25 +34,20 @@ export class MovimientosService {
         throw new BadRequestException('La TRANSFERENCIA requiere bodega de origen y destino.');
       }
 
-      // 2. Crear Cabecera
       const movimiento = queryRunner.manager.create(MovimientoInventario, {
-        tipo: dto.tipo,
-        observaciones: dto.observaciones,
-        usuarioId,
-        bodegaOrigenId: dto.bodegaOrigenId,
-        bodegaDestinoId: dto.bodegaDestinoId,
-        estado: EstadoMovimiento.PROCESADO,
-      });
+  tipo: dto.tipo,
+  observaciones: dto.observaciones,
+  usuarioId: usuarioId,
+  estado: EstadoMovimiento.PROCESADO,
+} as any);
 
       const savedMovimiento = await queryRunner.manager.save(movimiento);
-      const auditoriaSnapshot: any[] = []; // <-- CORRECCIÓN: Definido como : any[] para quitar error 'never'
+      const auditoriaSnapshot: any[] = [];
+      const detalles = dto.detalles || [];
 
-      // 3. Procesar Detalles iterando bajo Bloqueo Pesimista
-      const detalles = dto.detalles || []; // <-- CORRECCIÓN: Fallback seguro si llega undefined
-      
       for (const detalleDto of detalles) {
-        const cantidad = detalleDto.cantidad as number; // <-- CORRECCIÓN: Aseguramos el tipado
-        const materialId = detalleDto.materialId as string; // <-- CORRECCIÓN: Aseguramos el tipado
+        const cantidad = detalleDto.cantidad as number;
+        const materialId = detalleDto.materialId as string;
 
         const detalle = queryRunner.manager.create(DetalleMovimiento, {
           movimientoId: savedMovimiento.id,
@@ -62,10 +59,9 @@ export class MovimientosService {
         let stockOrigen: Inventario | null = null;
         let stockDestino: Inventario | null = null;
 
-        // A. Manejo de EGRESO / TRANSFERENCIA (Resta de stockOrigen)
         if (dto.tipo === TipoMovimiento.EGRESO || dto.tipo === TipoMovimiento.TRANSFERENCIA) {
           stockOrigen = await queryRunner.manager.findOne(Inventario, {
-            where: { bodega_id: dto.bodegaOrigenId, material_id: Number(materialId) },
+            where: { bodega: { id: dto.bodegaOrigenId }, material: { id: Number(materialId) } },
             lock: { mode: 'pessimistic_write' },
           });
 
@@ -74,10 +70,9 @@ export class MovimientosService {
           }
         }
 
-        // B. Manejo de INGRESO / TRANSFERENCIA (Suma en stockDestino)
         if (dto.tipo === TipoMovimiento.INGRESO || dto.tipo === TipoMovimiento.TRANSFERENCIA) {
           stockDestino = await queryRunner.manager.findOne(Inventario, {
-            where: { bodega_id: dto.bodegaDestinoId, material_id: Number(materialId) },
+            where: { bodega: { id: dto.bodegaDestinoId }, material: { id: Number(materialId) } },
             lock: { mode: 'pessimistic_write' },
           });
 
@@ -91,13 +86,11 @@ export class MovimientosService {
           }
         }
 
-        // C. Capturar Stock ANTES del movimiento para auditoría
         const stockAntes = {
           origen: stockOrigen ? Number(stockOrigen.cantidad_disponible) : null,
           destino: stockDestino ? Number(stockDestino.cantidad_disponible) : null,
         };
 
-        // D. Aplicar las Matemáticas
         if (stockOrigen) {
           stockOrigen.cantidad_disponible = Number(stockOrigen.cantidad_disponible) - cantidad;
           await queryRunner.manager.save(Inventario, stockOrigen);
@@ -107,7 +100,6 @@ export class MovimientosService {
           await queryRunner.manager.save(Inventario, stockDestino);
         }
 
-        // E. Capturar Stock DESPUÉS del movimiento para auditoría
         auditoriaSnapshot.push({
           materialId: materialId,
           cantidadMovida: cantidad,
@@ -119,31 +111,48 @@ export class MovimientosService {
         });
       }
 
-      // 4. Finalizar Transacción (Confirmar en PostgreSQL)
       await queryRunner.commitTransaction();
-
-      // 5. Auditoría Inmutable en MongoDB (Disparo asíncrono)
-      this.auditoriaService.registrarAccion(
-        usuarioId,                                    
-        `MOVIMIENTO_INVENTARIO_${dto.tipo}`,          
-        'Movimientos',                                
-        {                                             
-          movimientoId: savedMovimiento.id,
-          tipo: dto.tipo,
-          bodegas: { origen: dto.bodegaOrigenId, destino: dto.bodegaDestinoId },
-          observaciones: dto.observaciones,
-          trazabilidad_stock: auditoriaSnapshot
-        }
-      );
+      this.auditoriaService.registrarAccion(usuarioId, `MOVIMIENTO_INVENTARIO_${dto.tipo}`, 'Movimientos', {
+        movimientoId: savedMovimiento.id,
+        tipo: dto.tipo,
+        bodegas: { origen: dto.bodegaOrigenId, destino: dto.bodegaDestinoId },
+        observaciones: dto.observaciones,
+        trazabilidad_stock: auditoriaSnapshot
+      });
 
       return savedMovimiento;
-
     } catch (error) {
-      await queryRunner.rollbackTransaction(); 
+      await queryRunner.rollbackTransaction();
       if (error instanceof BadRequestException) throw error;
       throw new InternalServerErrorException(`Fallo crítico en el motor transaccional: ${error.message}`);
     } finally {
-      await queryRunner.release(); 
+      await queryRunner.release();
     }
+  }
+
+  async findAll() {
+    return await this.reqRepository.find({
+      relations: { detalles: true, proyecto: true, usuarioSolicitante: true },
+    });
+  }
+
+  async findOne(id: number) {
+    const req = await this.reqRepository.findOne({
+      where: { id },
+      relations: { detalles: { material: true }, proyecto: true, usuarioSolicitante: true },
+    });
+
+    if (!req) {
+      throw new NotFoundException(`Requerimiento #${id} no encontrado`);
+    }
+    return req;
+  }
+
+  async remove(id: number) {
+    const req = await this.findOne(id);
+    if (req.estado !== RequirementStatus.PENDIENTE) {
+      throw new BadRequestException('Solo se pueden eliminar requerimientos pendientes');
+    }
+    return await this.reqRepository.remove(req);
   }
 }
