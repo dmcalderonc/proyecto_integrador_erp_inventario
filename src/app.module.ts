@@ -49,6 +49,7 @@ import { ComprasModule } from './compras/compras.module';
     MaterialesModule,
     ProyectosModule,
     BodegasModule,
+    ProveedoresModule,
     InventarioModule,
     ComprasModule,
   ],

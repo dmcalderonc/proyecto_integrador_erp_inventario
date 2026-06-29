@@ -14,7 +14,7 @@ export class InventarioService {
 
 
   create(createInventarioDto: CreateInventarioDto) {
-    return this.inventarioRepository.save(createInventarioDto);
+    console.log("¡Llegó al servicio de inventario!");
   }
 
   findAll() {

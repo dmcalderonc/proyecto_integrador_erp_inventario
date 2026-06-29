@@ -9,7 +9,7 @@ import { DetalleMovimiento } from './entities/detalle-movimiento.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([MovimientoInventario, DetalleMovimiento]),
-    AuditoriaModule // Inyectamos servicio de Mongo
+    AuditoriaModule 
   ],
   controllers: [MovimientosController],
   providers: [MovimientosService],

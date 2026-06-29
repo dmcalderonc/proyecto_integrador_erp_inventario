@@ -9,6 +9,7 @@ export class InventarioController {
 
   @Post()
   create(@Body() createInventarioDto: CreateInventarioDto) {
+    console.log("¡Entró al controlador de inventario con estos datos:", createInventarioDto);
     return this.inventarioService.create(createInventarioDto);
   }
 
