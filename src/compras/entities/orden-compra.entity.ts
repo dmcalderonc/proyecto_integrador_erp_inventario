@@ -7,7 +7,7 @@ export class OrdenCompra {
   id?: number;
 
   @Column({ type: 'varchar', length: 20 })
-  codigo?: string; // Ejemplo: OC-001
+  codigo?: string; 
 
   @Column({ type: 'date' })
   fechaEmision?: Date;

@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
 import { OrdenCompra } from './orden-compra.entity';
-// Importa tu entidad Material aquí
+
 
 @Entity('detalle_orden_compra')
 export class DetalleOrdenCompra {
@@ -16,6 +16,6 @@ export class DetalleOrdenCompra {
   @ManyToOne(() => OrdenCompra, (orden) => orden.detalles)
   ordenCompra: OrdenCompra;
 
-  // @ManyToOne(() => Material, ...) // Descomenta cuando conectes materialId
+  // @ManyToOne(() => Material, ...) 
   // materialId: number;
 }
