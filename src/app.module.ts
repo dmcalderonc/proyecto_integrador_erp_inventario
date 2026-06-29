@@ -11,14 +11,20 @@ import { CategoriasModule } from './categorias/categorias.module';
 import { MaterialesModule } from './materiales/materiales.module';
 import { ProyectosModule } from './proyectos/proyectos.module';
 import { BodegasModule } from './bodegas/bodegas.module';
+
+// Módulos fusionados correctamente (Issue 8 + Main)
+import { MovimientosModule } from './movimientos/movimientos.module';
+import { RequirementsModule } from './requirements/requirements.module';
 import { ComprasModule } from './compras/compras.module';
 
 @Module({
   imports: [
+    // Variables de entorno
     ConfigModule.forRoot({
       isGlobal: true,
     }),
 
+    // Conexión PostgreSQL
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -29,11 +35,12 @@ import { ComprasModule } from './compras/compras.module';
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
-        autoLoadEntities: true, 
+        autoLoadEntities: true, // Esto carga ProyectoUsuario automáticamente
         synchronize: true, 
       }),
     }),
 
+    // Conexión MongoDB
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -42,15 +49,19 @@ import { ComprasModule } from './compras/compras.module';
       }),
     }),
 
+    // --- Todos tus módulos core y de negocio ---
     UsersModule,
     AuditoriaModule,
     AuthModule,
+    ProveedoresModule,
     CategoriasModule,
     MaterialesModule,
     ProyectosModule,
     BodegasModule,
     ProveedoresModule,
     InventarioModule,
+    MovimientosModule,
+    RequirementsModule,
     ComprasModule,
   ],
 })

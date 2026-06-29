@@ -7,8 +7,8 @@ export class Inventario {
   @PrimaryGeneratedColumn()
   id?: number;
 
-  @Column()
-  material_id?: number;
+  @Column({ name: 'material_id', type: 'integer' })
+  materialId: number;
 
   @Column()
   bodega_id?: number;
