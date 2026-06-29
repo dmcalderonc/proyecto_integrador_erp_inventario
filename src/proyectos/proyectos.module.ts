@@ -4,11 +4,13 @@ import { ProyectosService } from './proyectos.service';
 import { ProyectosController } from './proyectos.controller';
 import { Proyecto } from './proyecto.entity'; 
 import { BodegasModule } from '../bodegas/bodegas.module'; 
+import { ProyectoUsuario } from 'src/users/proyecto-usuario.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Proyecto]), 
-    BodegasModule,                        
+    BodegasModule, ProyectoUsuario,
+                     
   ],
   controllers: [ProyectosController],
   providers: [ProyectosService],

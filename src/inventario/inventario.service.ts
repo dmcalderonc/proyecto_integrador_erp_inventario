@@ -38,7 +38,7 @@ export class InventarioService {
   }
 
   async getGlobalStockByMaterial(materialId: number): Promise<number> {
-    const stocks = await this.inventarioRepository.find({ where: { material_id: materialId } });
+    const stocks = await this.inventarioRepository.find({ where: { material: { id: materialId } } });
     return stocks.reduce((acc, curr) => acc + (curr.cantidad_disponible || 0) + (curr.cantidad_reservada || 0), 0);
   }
 }
