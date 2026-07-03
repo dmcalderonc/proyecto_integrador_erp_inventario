@@ -6,7 +6,7 @@ import { AuditoriaLog } from './auditoria.schema';
 describe('AuditoriaService', () => {
   let service: AuditoriaService;
 
-  // Creamos un simulador para el modelo de Mongoose
+
   const mockAuditoriaModel = {
     new: jest.fn().mockImplementation((dto) => dto),
     save: jest.fn().mockResolvedValue(true),
@@ -17,7 +17,7 @@ describe('AuditoriaService', () => {
       providers: [
         AuditoriaService,
         {
-          // ESTO ES LO QUE FALTABA: Inyectar el token del modelo
+
           provide: getModelToken(AuditoriaLog.name),
           useValue: mockAuditoriaModel,
         },

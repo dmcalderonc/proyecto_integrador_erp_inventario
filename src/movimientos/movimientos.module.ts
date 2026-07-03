@@ -9,7 +9,7 @@ import { Requirement } from '../requirements/entities/requirement.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([MovimientoInventario, DetalleMovimiento,Requirement]),
+    TypeOrmModule.forFeature([MovimientoInventario, DetalleMovimiento, Requirement]),
     AuditoriaModule 
   ],
   controllers: [MovimientosController],

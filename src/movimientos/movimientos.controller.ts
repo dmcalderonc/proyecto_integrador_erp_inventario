@@ -11,7 +11,7 @@ export class MovimientosController {
   constructor(private readonly movimientosService: MovimientosService) {}
 
   @Post()
-  @Roles('ADMIN', 'BODEGUERO')
+  @Roles('ADMIN', 'BODEGUERO') 
   async registrar(@Body() dto: CreateMovimientoDto, @Req() req: any) {
     const usuarioId = req.user.id; 
     return await this.movimientosService.registrarMovimiento(dto, usuarioId);
