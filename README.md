@@ -56,6 +56,11 @@ El sistema utiliza JWT (JSON Web Token) para proteger las rutas críticas. Para 
 primero debes autenticarte en /auth/login y utilizar el access_token recibido en los 
 encabezados de tus peticiones bajo el esquema Bearer.
 
+Para ejecutar las pruebas unitarias estándar:
+npm test
+
+Para ejecutar las pruebas y generar el reporte de cobertura:
+npm run test:cov
 
 
 Tecnologías Utilizadas
