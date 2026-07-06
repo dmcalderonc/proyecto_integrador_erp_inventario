@@ -1,13 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ComprasService } from './compras.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { OrdenCompra } from './entities/orden-compra.entity'; // Ajusta la ruta
-import { MovimientosService } from '../movimientos/movimientos.service'; // Ajusta la ruta
+import { OrdenCompra } from './entities/orden-compra.entity'; 
+import { MovimientosService } from '../movimientos/movimientos.service'; 
 
 describe('ComprasService', () => {
   let service: ComprasService;
 
-  // 1. Definimos los mocks para las dependencias
   const mockOrdenCompraRepository = {
     find: jest.fn(),
     findOne: jest.fn(),
@@ -19,7 +18,7 @@ describe('ComprasService', () => {
     dispararMovimiento: jest.fn(),
   };
 
-  const mockAuditLogModel = {}; // Si es un provider inyectado sin métodos necesarios para el test
+  const mockAuditLogModel = {};
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -34,7 +33,7 @@ describe('ComprasService', () => {
           useValue: mockMovimientosService,
         },
         {
-          provide: 'AuditLogModel', // Nombre tal cual aparezca en el constructor
+          provide: 'AuditLogModel',
           useValue: mockAuditLogModel,
         },
       ],
@@ -47,7 +46,7 @@ describe('ComprasService', () => {
     expect(service).toBeDefined();
   });
 
-  // Ejemplo de cómo probar un método:
+
   it('debe llamar a find de repositorio', async () => {
     mockOrdenCompraRepository.find.mockResolvedValue([]);
     await service.findAll();

@@ -6,7 +6,6 @@ import { Inventario } from './inventario.entity';
 describe('InventarioService', () => {
   let service: InventarioService;
 
-  // Creamos un mock del repositorio de TypeORM
   const mockInventarioRepository = {
     find: jest.fn(),
     findOne: jest.fn(),
@@ -19,7 +18,7 @@ describe('InventarioService', () => {
       providers: [
         InventarioService,
         {
-          provide: getRepositoryToken(Inventario), // Inyectamos el mock del repositorio
+          provide: getRepositoryToken(Inventario), 
           useValue: mockInventarioRepository,
         },
       ],
