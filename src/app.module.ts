@@ -17,6 +17,7 @@ import { MovimientosModule } from './movimientos/movimientos.module';
 import { RequirementsModule } from './requirements/requirements.module';
 import { ComprasModule } from './compras/compras.module';
 import { AjustesInventarioModule } from './ajustes-inventario/ajustes-inventario.module';
+import { PdfModule } from './pdf/pdf.module';
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { AjustesInventarioModule } from './ajustes-inventario/ajustes-inventario
     RequirementsModule,
     ComprasModule,
     AjustesInventarioModule,
+    PdfModule,
   ],
 })
 export class AppModule {}
