@@ -16,6 +16,8 @@ import { BodegasModule } from './bodegas/bodegas.module';
 import { MovimientosModule } from './movimientos/movimientos.module';
 import { RequirementsModule } from './requirements/requirements.module';
 import { ComprasModule } from './compras/compras.module';
+import { AjustesInventarioModule } from './ajustes-inventario/ajustes-inventario.module';
+import { PdfModule } from './pdf/pdf.module';
 
 @Module({
   imports: [
@@ -63,6 +65,8 @@ import { ComprasModule } from './compras/compras.module';
     MovimientosModule,
     RequirementsModule,
     ComprasModule,
+    AjustesInventarioModule,
+    PdfModule,
   ],
 })
 export class AppModule {}
