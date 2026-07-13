@@ -22,7 +22,9 @@ describe('AjustesInventarioController', () => {
       ],
     }).compile();
 
-    controller = module.get<AjustesInventarioController>(AjustesInventarioController);
+    controller = module.get<AjustesInventarioController>(
+      AjustesInventarioController,
+    );
     service = module.get<AjustesInventarioService>(AjustesInventarioService);
   });
 
@@ -37,33 +39,26 @@ describe('AjustesInventarioController', () => {
         motivo: 'Ajuste por merma',
         detalles: [{ materialId: 2, stockFisico: 100 }],
       };
-      
+
       const mockReq = {
         user: { id: 'uuid-1234' },
       };
 
-      const mockResponse = { message: 'Ajuste de inventario ejecutado correctamente.', ajusteId: 'uuid-ajuste' };
-      mockAjustesInventarioService.ejecutarAjusteFisico.mockResolvedValue(mockResponse);
+      const mockResponse = {
+        message: 'Ajuste de inventario ejecutado correctamente.',
+        ajusteId: 'uuid-ajuste',
+      };
+      mockAjustesInventarioService.ejecutarAjusteFisico.mockResolvedValue(
+        mockResponse,
+      );
 
       const result = await controller.ejecutarAjuste(mockDto, mockReq);
 
-      expect(service.ejecutarAjusteFisico).toHaveBeenCalledWith(mockDto, mockReq.user.id);
+      expect(service.ejecutarAjusteFisico).toHaveBeenCalledWith(
+        mockDto,
+        mockReq.user.id,
+      );
       expect(result).toEqual(mockResponse);
-    });
-
-    it('debe usar el ID por defecto si req.user.id no existe', async () => {
-      const mockDto: CreateAjusteInventarioDto = {
-        bodegaId: 1,
-        motivo: 'Ajuste por merma',
-        detalles: [{ materialId: 2, stockFisico: 100 }],
-      };
-      
-      const mockReq = {}; 
-      const idPorDefecto = 'd3b07384-d113-4475-a8fb-08632df30291';
-
-      await controller.ejecutarAjuste(mockDto, mockReq);
-
-      expect(service.ejecutarAjusteFisico).toHaveBeenCalledWith(mockDto, idPorDefecto);
     });
   });
 });

@@ -1,21 +1,28 @@
 import { Controller, Post, Body, Req, UseGuards } from '@nestjs/common';
 import { AjustesInventarioService } from './ajustes-inventario.service';
 import { CreateAjusteInventarioDto } from './dto/create-ajustes-inventario.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 @Controller('ajustes-inventario')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class AjustesInventarioController {
-  constructor(private readonly ajustesInventarioService: AjustesInventarioService) {}
+  constructor(
+    private readonly ajustesInventarioService: AjustesInventarioService,
+  ) {}
 
   @Post()
+  @Roles('ADMIN', 'BODEGUERO')
   async ejecutarAjuste(
     @Body() createAjusteDto: CreateAjusteInventarioDto,
-    @Req() req: any
+    @Req() req: any,
   ) {
-    const usuarioId = req.user?.id || 'd3b07384-d113-4475-a8fb-08632df30291'; 
+    const usuarioId = req.user.id;
 
     return await this.ajustesInventarioService.ejecutarAjusteFisico(
-      createAjusteDto, 
-      usuarioId
+      createAjusteDto,
+      usuarioId,
     );
   }
 }
