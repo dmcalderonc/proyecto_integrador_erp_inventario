@@ -41,7 +41,7 @@ export class DespachosService {
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
-    let movimientoGeneradoId = null;
+    let movimientoGeneradoId: string | null = null;
 
     try {
       // 1. Validar existencia del Proyecto y su Bodega Virtual
@@ -71,7 +71,7 @@ export class DespachosService {
       } as any);
       const movimientoGuardado =
         await queryRunner.manager.save(nuevoMovimiento);
-      movimientoGeneradoId = movimientoGuardado.id;
+      movimientoGeneradoId = movimientoGuardado.id ?? null;
 
       // CRITERIO: Movimiento B (Cambio de Estado del Requerimiento)
       const requerimiento = await queryRunner.manager.findOne(Requirement, {
