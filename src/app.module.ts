@@ -21,6 +21,7 @@ import { PdfModule } from './pdf/pdf.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { SolicitudesCompraModule } from './solicitudes-compra/solicitudes-compra.module';
 import { CotizacionesModule } from './cotizaciones/cotizaciones.module';
+import { DespachosModule } from './despachos/despachos.module';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { CotizacionesModule } from './cotizaciones/cotizaciones.module';
     DashboardModule,
     SolicitudesCompraModule,
     CotizacionesModule,
+    DespachosModule,
   ],
 })
 export class AppModule {}
