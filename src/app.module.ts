@@ -19,6 +19,8 @@ import { ComprasModule } from './compras/compras.module';
 import { AjustesInventarioModule } from './ajustes-inventario/ajustes-inventario.module';
 import { PdfModule } from './pdf/pdf.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { SolicitudesCompraModule } from './solicitudes-compra/solicitudes-compra.module';
+import { CotizacionesModule } from './cotizaciones/cotizaciones.module';
 
 @Module({
   imports: [
@@ -68,6 +70,8 @@ import { DashboardModule } from './dashboard/dashboard.module';
     AjustesInventarioModule,
     PdfModule,
     DashboardModule,
+    SolicitudesCompraModule,
+    CotizacionesModule,
   ],
 })
 export class AppModule {}
