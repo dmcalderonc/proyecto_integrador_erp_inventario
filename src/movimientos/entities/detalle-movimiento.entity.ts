@@ -14,13 +14,13 @@ export class DetalleMovimiento {
   @JoinColumn({ name: 'movimiento_id' })
   movimiento: MovimientoInventario;
 
-  @Column({ name: 'material_id', type: 'uuid' })
-  materialId: string;
+  @Column({ name: 'material_id', type: 'integer' })
+  materialId: number;
 
   @ManyToOne(() => Material)
   @JoinColumn({ name: 'material_id' })
   material: Material;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  @Column('int')
   cantidad: number;
 }
