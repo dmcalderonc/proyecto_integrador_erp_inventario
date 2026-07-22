@@ -71,7 +71,7 @@ export class DespachosService {
         const cantidad = Number(detalle.cantidad);
 
         const stockActual = await queryRunner.manager.findOne(Inventario, {
-          where: { materialId, bodega_id: Number(bodegaId) },
+          where: { materialId, bodegaId: Number(bodegaId) },
         });
 
         if (stockActual) {
@@ -80,7 +80,7 @@ export class DespachosService {
         } else {
           const nuevoStock = queryRunner.manager.create(Inventario, {
             materialId,
-            bodega_id: Number(bodegaId),
+            bodegaId: Number(bodegaId),
             cantidad_disponible: cantidad,
             cantidad_reservada: 0,
           });

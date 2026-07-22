@@ -11,7 +11,7 @@ import { CategoriasModule } from './categorias/categorias.module';
 import { MaterialesModule } from './materiales/materiales.module';
 import { ProyectosModule } from './proyectos/proyectos.module';
 import { BodegasModule } from './bodegas/bodegas.module';
-
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 import { MovimientosModule } from './movimientos/movimientos.module';
 import { RequirementsModule } from './requirements/requirements.module';
@@ -27,7 +27,7 @@ import { PublicModule } from './public/public.module';
 
 @Module({
   imports: [
-
+    EventEmitterModule.forRoot(), 
     ConfigModule.forRoot({
       isGlobal: true,
     }),
@@ -43,7 +43,7 @@ import { PublicModule } from './public/public.module';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
         autoLoadEntities: true, 
-        synchronize: true, 
+        synchronize: false, 
       }),
     }),
 
@@ -65,7 +65,6 @@ import { PublicModule } from './public/public.module';
     MaterialesModule,
     ProyectosModule,
     BodegasModule,
-    ProveedoresModule,
     InventarioModule,
     MovimientosModule,
     RequirementsModule,

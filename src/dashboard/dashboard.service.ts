@@ -44,7 +44,7 @@ export class DashboardService {
         SELECT SUM(cantidad_disponible) AS "totalStock" FROM stock_bodega
       `);
       const totalStock = parseFloat(stockQuery[0]?.totalStock || '0');
-      const totalInventario = totalStock * 10.00;
+      const totalInventario = totalStock * 10.00; // TODO: Integrar precio real de materiales/compras
 
       const totalUsuarios = await this.userRepo.count();
       const totalCategorias = await this.categoriaRepo.count();

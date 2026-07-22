@@ -7,7 +7,7 @@ import { OrdenCompra } from './entities/orden-compra.entity';
 import { MovimientosService } from '../movimientos/movimientos.service';
 import { Cotizacion, EstadoCotizacion } from '../cotizaciones/entities/cotizacion.entity';
 import { TipoMovimiento } from '../movimientos/entities/movimiento-inventario.entity';
-
+import { EventEmitter2 } from '@nestjs/event-emitter';
 @Injectable()
 export class ComprasService {
   constructor(
@@ -17,6 +17,7 @@ export class ComprasService {
     private readonly movimientosService: MovimientosService,
     @InjectRepository(Cotizacion)
     private readonly cotizacionRepository: Repository<Cotizacion>,
+    private readonly eventEmitter: EventEmitter2,
   ) { }
 
   async create(dto: any) {
@@ -85,11 +86,14 @@ export class ComprasService {
         {
           tipo: TipoMovimiento.INGRESO,
           observaciones: `Recepción de OC #${id}`,
-          bodegaDestinoId: 1,
+          bodegaDestinoId: 1, // TODO: Agregar campo bodegaDestinoId a OrdenCompra entity
           detalles: detallesMovimiento,
         },
         usuarioId,
       );
+      this.eventEmitter.emit('orden.recibida', {
+        detalles: detallesMovimiento,
+      });
     }
 
     try {

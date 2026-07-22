@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository, Brackets } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateMaterialDto } from './dto/create-material.dto';
 import { UpdateMaterialDto } from './dto/update-material.dto';
@@ -7,6 +7,7 @@ import { Material } from './material.entity';
 import { Categoria } from '../categorias/categoria.entity';
 import { UnidadMedida } from '../unidades-medida/unidad-medida.entity';
 import { AuditoriaService } from '../auditoria/auditoria.service';
+import { PaginationDto } from '../common/dto/pagination.dto';
 
 @Injectable()
 export class MaterialesService {
@@ -19,7 +20,7 @@ export class MaterialesService {
     private readonly auditoriaService: AuditoriaService,
   ) { }
 
-  async create(createMaterialDto: CreateMaterialDto, usuarioId: number): Promise<Material> {
+  async create(createMaterialDto: CreateMaterialDto, usuarioId: string): Promise<Material> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -75,7 +76,7 @@ export class MaterialesService {
 
       try {
         await this.auditoriaService.registrarAccion(
-          usuarioId.toString(),
+          usuarioId,
           'CREAR_MATERIAL',
           'Materiales',
           {
@@ -98,13 +99,39 @@ export class MaterialesService {
     }
   }
 
-  async findAll(): Promise<Material[]> {
-    return await this.materialRepository.find({
-      relations: {
-        categoria: true,
-        unidadMedida: true,
+  async findAll(paginationDto: PaginationDto) {
+    const { page = 1, limit = 10, search } = paginationDto;
+    const skip = (page - 1) * limit;
+
+    const query = this.materialRepository.createQueryBuilder('material')
+      .leftJoinAndSelect('material.categoria', 'categoria')
+      .leftJoinAndSelect('material.unidadMedida', 'unidadMedida');
+
+    if (search) {
+      query.andWhere(
+        new Brackets((qb) => {
+          qb.where('LOWER(material.nombre) LIKE LOWER(:search)', { search: `%${search}%` })
+            .orWhere('LOWER(material.sku) LIKE LOWER(:search)', { search: `%${search}%` });
+        }),
+      );
+    }
+
+    query.orderBy('material.id', 'DESC');
+
+    const [data, total] = await query
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       },
-    });
+    };
   }
 
   async findOne(id: number): Promise<Material> {
@@ -123,7 +150,7 @@ export class MaterialesService {
     return material;
   }
 
-  async update(id: number, updateMaterialDto: UpdateMaterialDto, usuarioId: number): Promise<Material> {
+  async update(id: number, updateMaterialDto: UpdateMaterialDto, usuarioId: string): Promise<Material> {
     const material = await this.findOne(id);
     
     if ('sku' in (updateMaterialDto as any)) {
@@ -147,7 +174,7 @@ export class MaterialesService {
     return guardado;
   }
 
-  async remove(id: number, usuarioId: number): Promise<{ message: string }> {
+  async remove(id: number, usuarioId: string): Promise<{ message: string }> {
     const material = await this.findOne(id);
     const skuEliminado = material.sku;
 

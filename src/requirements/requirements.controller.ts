@@ -53,10 +53,12 @@ export class RequirementsController {
     @Req() req: any,
   ) {
     const userId = req.user.id;
+    const rol = req.user.rol;
     return this.requirementsService.updateStatus(
       +id,
       updateRequirementDto,
       userId,
+      rol, 
     );
   }
 

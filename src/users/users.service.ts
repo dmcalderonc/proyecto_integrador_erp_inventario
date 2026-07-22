@@ -22,7 +22,7 @@ export class UsersService {
     }
 
     const newUser = this.userRepository.create({
-      nombre: createUserDto.username,
+      nombre: createUserDto.nombre,
       email: createUserDto.email,
       password: createUserDto.password,
       rol: createUserDto.rol,
@@ -74,7 +74,7 @@ export class UsersService {
     }
 
     const dataToUpdate = {
-      ...(updateUserDto.username && { nombre: updateUserDto.username }),
+      ...(updateUserDto.nombre && { nombre: updateUserDto.nombre }),
       ...(updateUserDto.email && { email: updateUserDto.email }),
       ...(updateUserDto.password && { password: updateUserDto.password }),
       ...(updateUserDto.rol && { rol: updateUserDto.rol }),

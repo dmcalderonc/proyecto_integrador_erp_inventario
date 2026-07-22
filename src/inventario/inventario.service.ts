@@ -14,7 +14,7 @@ export class InventarioService {
 
   async create(dto: CreateInventarioDto) {
     const existing = await this.inventarioRepository.findOne({
-      where: { materialId: dto.material_id, bodega_id: dto.bodega_id },
+      where: { materialId: dto.material_id, bodegaId: dto.bodega_id },
     });
 
     if (existing) {
@@ -25,7 +25,7 @@ export class InventarioService {
 
     const registro = this.inventarioRepository.create({
       materialId: dto.material_id,
-      bodega_id: dto.bodega_id,
+      bodegaId: dto.bodega_id,
       cantidad_disponible: dto.cantidad_disponible || 0,
       cantidad_reservada: dto.cantidad_reservada || 0,
     });
@@ -62,7 +62,7 @@ export class InventarioService {
 
   async getStockByBodega(bodegaId: number) {
     return this.inventarioRepository.find({
-      where: { bodega_id: bodegaId },
+      where: { bodegaId: bodegaId },
       relations: { material: true },
     });
   }

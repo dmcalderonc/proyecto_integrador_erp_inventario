@@ -39,7 +39,7 @@ export class AjustesInventarioService {
       for (const detalle of detalles) {
 
         let inventario = await queryRunner.manager.findOne(Inventario, {
-          where: { bodega_id: bodegaId, materialId: detalle.materialId },
+          where: { bodegaId: bodegaId, materialId: detalle.materialId },
         });
 
         if (!inventario) {

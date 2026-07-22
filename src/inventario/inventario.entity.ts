@@ -10,8 +10,8 @@ export class Inventario {
   @Column({ name: 'material_id', type: 'integer' })
   materialId: number;
 
-  @Column()
-  bodega_id?: number;
+  @Column({ name: 'bodega_id', type: 'integer' })
+  bodegaId: number;
 
   @Column({ type: 'int', default: 0 })
   cantidad_disponible?: number;
