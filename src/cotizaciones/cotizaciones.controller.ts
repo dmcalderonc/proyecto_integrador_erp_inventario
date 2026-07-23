@@ -47,6 +47,18 @@ export class CotizacionesController {
     return this.cotizacionesService.update(+id, updateCotizacioneDto);
   }
 
+  @Patch(':id/seleccionar')
+  @Roles('ADMIN', 'COMPRADOR')
+  seleccionar(@Param('id') id: string) {
+    return this.cotizacionesService.seleccionar(+id);
+  }
+
+  @Patch(':id/descartar')
+  @Roles('ADMIN', 'COMPRADOR')
+  descartar(@Param('id') id: string) {
+    return this.cotizacionesService.descartar(+id);
+  }
+
   @Delete(':id')
   @Roles('ADMIN')
   remove(@Param('id') id: string) {

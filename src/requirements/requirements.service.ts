@@ -2,24 +2,28 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
-  InternalServerErrorException,
-  ForbiddenException, 
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, EntityManager, FindOptionsWhere, In } from 'typeorm';
 import { Requirement, RequirementStatus } from './entities/requirement.entity';
+import { RequirementDetail, ItemStatus } from './entities/requirement-detail.entity';
 import { CreateRequirementDto } from './dto/create-requirement.dto';
 import { UpdateRequirementDto } from './dto/update-requirement.dto';
 import { Inventario } from '../inventario/inventario.entity';
+import { Traspaso, EstadoTraspaso } from '../traspasos/entities/traspaso.entity';
+import { DetalleTraspaso } from '../traspasos/entities/detalle-traspaso.entity';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 
 @Injectable()
 export class RequirementsService {
-  private readonly BODEGA_CENTRAL_ID = 1;
-
   constructor(
     @InjectRepository(Requirement)
     private reqRepository: Repository<Requirement>,
+    @InjectRepository(RequirementDetail)
+    private detalleRepository: Repository<RequirementDetail>,
+    @InjectRepository(Inventario)
+    private inventarioRepository: Repository<Inventario>,
     private dataSource: DataSource,
     private eventEmitter: EventEmitter2,
   ) {}
@@ -28,6 +32,7 @@ export class RequirementsService {
     const requirement = this.reqRepository.create({
       proyectoId: createDto.proyectoId,
       usuarioSolicitanteId: userId,
+      bodegaId: createDto.bodegaId,
       estado: RequirementStatus.PENDIENTE,
       detalles: createDto.detalles.map((detalle) => ({
         materialId: detalle.materialId,
@@ -38,27 +43,26 @@ export class RequirementsService {
     return await this.reqRepository.save(requirement);
   }
 
-  async updateStatus(
+  async evaluarItem(
     id: number,
-    updateDto: UpdateRequirementDto,
+    detalleId: number,
+    accion: 'APROBADO' | 'RECHAZADO',
     userId: string,
-    rol: string, 
   ) {
-    if (
-      (updateDto.estado === RequirementStatus.APROBADO || 
-       updateDto.estado === RequirementStatus.RECHAZADO) && 
-      rol !== 'ADMIN'
-    ) {
-      throw new ForbiddenException('Acceso denegado: Solo un Administrador puede Aprobar o Rechazar requerimientos.');
-    }
-
     const req = await this.reqRepository.findOne({
       where: { id },
-      relations: { detalles: true, proyecto: { bodega: true } },
+      relations: { detalles: true, bodega: true },
     });
 
-    if (!req) {
-      throw new NotFoundException(`Requerimiento #${id} no encontrado.`);
+    if (!req) throw new NotFoundException(`Requerimiento #${id} no encontrado`);
+    if (req.estado !== RequirementStatus.PENDIENTE) {
+      throw new BadRequestException('Solo se pueden evaluar requerimientos en estado PENDIENTE');
+    }
+
+    const detalle = req.detalles.find(d => d.id === detalleId);
+    if (!detalle) throw new NotFoundException(`Detalle #${detalleId} no encontrado`);
+    if (detalle.estadoItem !== ItemStatus.PENDIENTE) {
+      throw new BadRequestException(`El ítem #${detalleId} ya fue evaluado`);
     }
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -66,272 +70,380 @@ export class RequirementsService {
     await queryRunner.startTransaction();
 
     try {
-      if (updateDto.estado === RequirementStatus.APROBADO && req.estado === RequirementStatus.PENDIENTE) {
-        for (const det of req.detalles) {
-          
-          // 🚨 NUEVO: Verificamos la decisión individual del administrador para este ítem
-          const decisionAdmin = updateDto.detallesEvaluar?.find(d => d.id === det.id);
-
-          if (decisionAdmin && decisionAdmin.accion === 'RECHAZADO') {
-            det.estadoItem = 'RECHAZADO' as any;
-            await queryRunner.manager.save(det);
-            continue; // Saltamos al siguiente ítem sin tocar stock ni compras
-          }
-
-          // Si el ítem fue aprobado (o no venía en el arreglo, asumimos aprobación), hacemos la validación de stock y Split
-          const stock = await queryRunner.manager.findOne(Inventario, {
-            where: {
-              materialId: Number(det.materialId),
-              bodegaId: this.BODEGA_CENTRAL_ID,
-            },
-          });
-
-          const cantidadReq = Number(det.cantidadSolicitada);
-          const disponible = stock ? (stock.cantidad_disponible || 0) : 0;
-
-          if (disponible < cantidadReq) {
-            const cantidadFaltante = cantidadReq - disponible;
-
-            if (disponible > 0) {
-              stock.cantidad_disponible -= disponible;
-              stock.cantidad_reservada = (stock.cantidad_reservada || 0) + disponible;
-              await queryRunner.manager.save(stock);
-
-              det.cantidadSolicitada = disponible;
-              det.estadoItem = 'APROBADO_BODEGA' as any; 
-              await queryRunner.manager.save(det);
-
-              const nuevoDetalleFaltante = queryRunner.manager.create(det.constructor, {
-                ...det, 
-                id: undefined, 
-                cantidadSolicitada: cantidadFaltante,
-                cantidadDespachada: 0,
-                estadoItem: 'EN_COMPRAS', 
-              });
-              await queryRunner.manager.save(nuevoDetalleFaltante);
-
-            } else {
-              det.estadoItem = 'EN_COMPRAS' as any;
-              await queryRunner.manager.save(det);
-            }
-            
-            this.eventEmitter.emit('requerimiento.en_compras', {
-              requirementId: req.id,
-              materialId: det.materialId,
-              cantidad: cantidadFaltante, 
-              proyectoId: req.proyecto?.id,
-            });
-            
-          } else {
-            stock.cantidad_disponible -= cantidadReq;
-            stock.cantidad_reservada = (stock.cantidad_reservada || 0) + cantidadReq;
-            await queryRunner.manager.save(stock);
-            
-            det.estadoItem = 'APROBADO_BODEGA' as any;
-            await queryRunner.manager.save(det);
-          }
-        }
-
-        req.estado = RequirementStatus.APROBADO;
-
-      } else if (updateDto.estado === RequirementStatus.ATENDIDO && req.estado === RequirementStatus.APROBADO) {
-        // ... (Tu lógica de despacho intacta)
-        const bodegaDestinoId = req.proyecto?.bodega?.id;
-
-        for (const det of req.detalles) {
-          // Solo despachamos ítems que estén aprobados para bodega
-          if ((det as any).estadoItem === 'RECHAZADO' || (det as any).estadoItem === 'EN_COMPRAS') continue;
-
-          const cantidadDespachada = Number(det.cantidadDespachada || det.cantidadSolicitada);
-          const materialId = Number(det.materialId);
-
-          await queryRunner.manager.decrement(
-            Inventario,
-            { materialId, bodegaId: this.BODEGA_CENTRAL_ID },
-            'cantidad_reservada',
-            cantidadDespachada,
-          );
-
-          if (bodegaDestinoId) {
-            const stockDestino = await queryRunner.manager.findOne(Inventario, {
-              where: { materialId, bodegaId: Number(bodegaDestinoId) },
-            });
-
-            if (stockDestino) {
-              stockDestino.cantidad_disponible = (stockDestino.cantidad_disponible || 0) + cantidadDespachada;
-              await queryRunner.manager.save(stockDestino);
-            } else {
-              const nuevoStock = queryRunner.manager.create(Inventario, {
-                materialId,
-                bodegaId: Number(bodegaDestinoId),
-                cantidad_disponible: cantidadDespachada,
-                cantidad_reservada: 0,
-              });
-              await queryRunner.manager.save(nuevoStock);
-            }
-          }
-
-          det.cantidadDespachada = cantidadDespachada;
-          det.estadoItem = 'DESPACHADO' as any;
-          await queryRunner.manager.save(det);
-        }
-
-        await this.recalcularEstadoMaestro(req.id, queryRunner.manager);
-
-      } else if (updateDto.estado === RequirementStatus.RECHAZADO && req.estado !== RequirementStatus.RECHAZADO && req.estado !== RequirementStatus.ATENDIDO) {
-        // ... (Tu lógica de rechazo general intacta)
-        if (req.estado === RequirementStatus.APROBADO || req.estado === RequirementStatus.PARCIALMENTE_ATENDIDO) {
-          for (const det of req.detalles) {
-            if ((det as any).estadoItem === 'RECHAZADO') continue;
-
-            const cantidadReservada = Number(det.cantidadDespachada || det.cantidadSolicitada);
-
-            await queryRunner.manager.decrement(
-              Inventario,
-              { materialId: Number(det.materialId), bodegaId: this.BODEGA_CENTRAL_ID },
-              'cantidad_reservada',
-              cantidadReservada,
-            );
-
-            await queryRunner.manager.increment(
-              Inventario,
-              { materialId: Number(det.materialId), bodegaId: this.BODEGA_CENTRAL_ID },
-              'cantidad_disponible',
-              cantidadReservada,
-            );
-            det.estadoItem = 'RECHAZADO' as any;
-            await queryRunner.manager.save(det);
-          }
-        }
-
-        req.estado = RequirementStatus.RECHAZADO;
-
+      if (accion === 'RECHAZADO') {
+        detalle.estadoItem = ItemStatus.RECHAZADO;
+        await queryRunner.manager.save(detalle);
       } else {
-        throw new BadRequestException(
-          `Transición no válida: ${req.estado} → ${updateDto.estado}`,
-        );
+        await this.aprobarItem(detalle, req.bodegaId, queryRunner.manager);
       }
 
-      await queryRunner.manager.save(req);
+      await this.recalcularEstadoMaestro(id, queryRunner.manager);
       await queryRunner.commitTransaction();
 
-      return this.reqRepository.findOne({
-        where: { id },
-        relations: { detalles: true, proyecto: true },
-      });
-
+      return this.findOne(id);
     } catch (error) {
-      if (queryRunner.isTransactionActive) {
-        await queryRunner.rollbackTransaction();
-      }
+      if (queryRunner.isTransactionActive) await queryRunner.rollbackTransaction();
       throw error;
     } finally {
       await queryRunner.release();
     }
-  } 
+  }
+
+  private async aprobarItem(
+    detalle: RequirementDetail,
+    bodegaSolicitadaId: number,
+    manager: EntityManager,
+  ) {
+    const stockSolicitada = await manager.findOne(Inventario, {
+      where: { materialId: detalle.materialId, bodegaId: bodegaSolicitadaId },
+    });
+
+    const stockDisponible = stockSolicitada
+      ? (stockSolicitada.cantidad_disponible || 0) - (stockSolicitada.cantidad_reservada || 0)
+      : 0;
+
+    const cantidadReq = Number(detalle.cantidadSolicitada);
+
+    // Case 1: Enough stock in requested warehouse
+    if (stockDisponible >= cantidadReq) {
+      stockSolicitada.cantidad_reservada = (stockSolicitada.cantidad_reservada || 0) + cantidadReq;
+      stockSolicitada.cantidad_disponible = (stockSolicitada.cantidad_disponible || 0) - cantidadReq;
+      await manager.save(stockSolicitada);
+
+      detalle.estadoItem = ItemStatus.APROBADO_BODEGA;
+      await manager.save(detalle);
+      return;
+    }
+
+    // Case 2: Partial stock in requested warehouse
+    if (stockDisponible > 0) {
+      const cantidadFaltante = cantidadReq - stockDisponible;
+
+      // Reserve what's available
+      stockSolicitada.cantidad_reservada = (stockSolicitada.cantidad_reservada || 0) + stockDisponible;
+      stockSolicitada.cantidad_disponible = (stockSolicitada.cantidad_disponible || 0) - stockDisponible;
+      await manager.save(stockSolicitada);
+
+      // Create a new detail for the available portion
+      const nuevoDetalle = manager.create(RequirementDetail, {
+        requerimientoId: detalle.requerimientoId,
+        materialId: detalle.materialId,
+        cantidadSolicitada: stockDisponible,
+        cantidadDespachada: 0,
+        estadoItem: ItemStatus.APROBADO_BODEGA,
+      });
+      await manager.save(nuevoDetalle);
+
+      // Update original with the shortage
+      detalle.cantidadSolicitada = cantidadFaltante;
+      await this.buscarStockEnOtrasBodegas(detalle, bodegaSolicitadaId, manager);
+      return;
+    }
+
+    // Case 3: No stock in requested warehouse — search other warehouses
+    await this.buscarStockEnOtrasBodegas(detalle, bodegaSolicitadaId, manager);
+  }
+
+  private async buscarStockEnOtrasBodegas(
+    detalle: RequirementDetail,
+    bodegaSolicitadaId: number,
+    manager: EntityManager,
+  ) {
+    const inventarios = await manager.find(Inventario, {
+      where: { materialId: detalle.materialId },
+      relations: { bodega: true },
+      order: { id: 'ASC' },
+    });
+
+    const cantidadReq = Number(detalle.cantidadSolicitada);
+
+    for (const inv of inventarios) {
+      if (inv.bodegaId === bodegaSolicitadaId) continue;
+
+      const disponible = (inv.cantidad_disponible || 0) - (inv.cantidad_reservada || 0);
+      if (disponible >= cantidadReq) {
+        // Found enough stock in another warehouse — create automatic transfer
+        await this.crearTraspasoAutomatico(detalle, inv.bodegaId, manager);
+        return;
+      }
+    }
+
+    // No warehouse has enough stock — send to purchases
+    detalle.estadoItem = ItemStatus.EN_COMPRAS;
+    await manager.save(detalle);
+
+    const requerimiento = await manager.findOne(Requirement, {
+      where: { id: detalle.requerimientoId },
+    });
+
+    this.eventEmitter.emit('requerimiento.en_compras', {
+      requirementId: detalle.requerimientoId,
+      materialId: detalle.materialId,
+      cantidad: cantidadReq,
+      proyectoId: requerimiento?.proyectoId,
+    });
+  }
+
+  private async crearTraspasoAutomatico(
+    detalle: RequirementDetail,
+    bodegaOrigenId: number,
+    manager: EntityManager,
+  ) {
+    const suffix = crypto.randomUUID().slice(0, 8).toUpperCase();
+    const codigo = `TRASP-${suffix}`;
+
+    const traspaso = manager.create(Traspaso, {
+      codigo,
+      bodegaOrigenId,
+      bodegaDestinoId: (await manager.findOne(Requirement, { where: { id: detalle.requerimientoId } }))?.bodegaId,
+      usuarioOrigenId: 'SYSTEM',
+      estado: EstadoTraspaso.PENDIENTE,
+      requerimientoDetalleId: detalle.id,
+      detalles: [{
+        materialId: detalle.materialId,
+        cantidad: Number(detalle.cantidadSolicitada),
+        cantidadRecibida: 0,
+      }],
+    });
+    await manager.save(traspaso);
+
+    detalle.estadoItem = ItemStatus.EN_TRASLADO;
+    await manager.save(detalle);
+  }
+
+  async updateStatus(
+    id: number,
+    updateDto: UpdateRequirementDto,
+    userId: string,
+    rol: string,
+  ) {
+    if (rol !== 'ADMIN') {
+      throw new ForbiddenException('Solo un Administrador puede cambiar el estado general del requerimiento');
+    }
+
+    const req = await this.reqRepository.findOne({
+      where: { id },
+      relations: { detalles: true, bodega: true },
+    });
+
+    if (!req) throw new NotFoundException(`Requerimiento #${id} no encontrado`);
+
+    // Allow marking as ATENDIDO (dispatch) when APROBADO
+    if (updateDto.estado === RequirementStatus.ATENDIDO && req.estado === RequirementStatus.APROBADO) {
+      return this.despacharRequerimiento(req);
+    }
+
+    // Allow bulk rejection (rejects all pending items)
+    if (updateDto.estado === RequirementStatus.RECHAZADO && req.estado === RequirementStatus.PENDIENTE) {
+      return this.rechazarRequerimiento(req);
+    }
+
+    throw new BadRequestException(
+      `Transición no válida: ${req.estado} → ${updateDto.estado}`,
+    );
+  }
+
+  private async despacharRequerimiento(req: Requirement) {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      for (const det of req.detalles) {
+        if (det.estadoItem !== ItemStatus.APROBADO_BODEGA) continue;
+
+        const cantidadDespachada = Number(det.cantidadDespachada || det.cantidadSolicitada);
+        det.cantidadDespachada = cantidadDespachada;
+        det.estadoItem = ItemStatus.DESPACHADO;
+        await queryRunner.manager.save(det);
+      }
+
+      await this.recalcularEstadoMaestro(req.id, queryRunner.manager);
+      await queryRunner.commitTransaction();
+      return this.findOne(req.id);
+    } catch (error) {
+      if (queryRunner.isTransactionActive) await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  private async rechazarRequerimiento(req: Requirement) {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      for (const det of req.detalles) {
+        if (det.estadoItem === ItemStatus.RECHAZADO || det.estadoItem === ItemStatus.DESPACHADO) continue;
+
+        // Return reserved stock if applicable
+        if (det.estadoItem === ItemStatus.APROBADO_BODEGA) {
+          const cantidadReservada = Number(det.cantidadSolicitada);
+          await queryRunner.manager.decrement(
+            Inventario,
+            { materialId: Number(det.materialId), bodegaId: req.bodegaId },
+            'cantidad_reservada',
+            cantidadReservada,
+          );
+          await queryRunner.manager.increment(
+            Inventario,
+            { materialId: Number(det.materialId), bodegaId: req.bodegaId },
+            'cantidad_disponible',
+            cantidadReservada,
+          );
+        }
+
+        det.estadoItem = ItemStatus.RECHAZADO;
+        await queryRunner.manager.save(det);
+      }
+
+      req.estado = RequirementStatus.RECHAZADO;
+      await queryRunner.manager.save(req);
+      await queryRunner.commitTransaction();
+      return this.findOne(req.id);
+    } catch (error) {
+      if (queryRunner.isTransactionActive) await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
   async findAll(userId?: string, rol?: string) {
-    const where: any = {};
-    
+    const where: FindOptionsWhere<Requirement> = {};
+
     if (rol === 'SOLICITANTE' && userId) {
       where.usuarioSolicitanteId = userId;
     }
-    
+
     if (rol === 'COMPRADOR') {
       where.estado = RequirementStatus.APROBADO;
     }
 
     return await this.reqRepository.find({
       where,
-      relations: { detalles: true, proyecto: true, usuarioSolicitante: true },
+      relations: {
+        detalles: { material: true },
+        proyecto: true,
+        usuarioSolicitante: true,
+        bodega: true,
+      },
+      order: { id: 'DESC' },
     });
   }
 
   async findOne(id: number, userId?: string, rol?: string) {
-    const where: any = { id };
+    const where: FindOptionsWhere<Requirement> = { id };
     if (rol === 'SOLICITANTE' && userId) {
       where.usuarioSolicitanteId = userId;
     }
     return await this.reqRepository.findOne({
       where,
-      relations: { detalles: { material: true }, proyecto: true },
+      relations: {
+        detalles: { material: true },
+        proyecto: true,
+        usuarioSolicitante: true,
+        bodega: true,
+      },
     });
   }
 
   async remove(id: number) {
     return await this.reqRepository.delete(id);
   }
-// 🔥 Despertador FIFO: Se ejecuta automáticamente al recibir una Orden de Compra
-  // 🔥 Despertador FIFO: Se ejecuta automáticamente al recibir una Orden de Compra
+
   @OnEvent('orden.recibida')
-  async handleOrdenRecibida(payload: { detalles: { materialId: number, cantidad: number }[] }) {
-    
+  async handleOrdenRecibida(payload: { detalles: { materialId: number; cantidad: number }[] }) {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      // ✅ Solución: Declaramos el Set explícitamente como número y fuera del bucle
       const requerimientosModificadosIds = new Set<number>();
+      const materialIdsRecibidos = payload.detalles.map(d => d.materialId);
 
-      for (const itemIngresado of payload.detalles) {
-        let stockRestanteParaAsignar = itemIngresado.cantidad;
+      const requerimientos = await queryRunner.manager
+        .createQueryBuilder(Requirement, 'req')
+        .innerJoinAndSelect('req.detalles', 'det')
+        .where('det.estadoItem = :status', { status: ItemStatus.EN_COMPRAS })
+        .andWhere('det.materialId IN (:...materialIds)', { materialIds: materialIdsRecibidos })
+        .orderBy('req.id', 'ASC')
+        .getMany();
 
-        const requerimientos = await queryRunner.manager.find(Requirement, {
-          relations: { detalles: true },
-          order: { id: 'ASC' }, 
-        });
+      for (const req of requerimientos) {
+        const detallesDormidos = req.detalles.filter(
+          d =>
+            materialIdsRecibidos.includes(Number(d.materialId)) &&
+            d.estadoItem === ItemStatus.EN_COMPRAS,
+        );
 
-        for (const req of requerimientos) {
-          if (stockRestanteParaAsignar <= 0) break;
+        for (const det of detallesDormidos) {
+          const cantidadNecesitada = Number(det.cantidadSolicitada);
 
-          const detallesDormidos = req.detalles.filter(d => 
-            Number(d.materialId) === itemIngresado.materialId && 
-            (d as any).estadoItem === 'EN_COMPRAS'
-          );
+          const stockBodega = await queryRunner.manager.findOne(Inventario, {
+            where: { materialId: det.materialId, bodegaId: req.bodegaId },
+          });
 
-          for (const det of detallesDormidos) {
-            if (stockRestanteParaAsignar <= 0) break;
+          const stockLibre = stockBodega
+            ? (stockBodega.cantidad_disponible || 0) - (stockBodega.cantidad_reservada || 0)
+            : 0;
 
-            const cantidadNecesitada = Number(det.cantidadSolicitada);
+          if (stockLibre <= 0) continue;
 
-            if (stockRestanteParaAsignar >= cantidadNecesitada) {
-              stockRestanteParaAsignar -= cantidadNecesitada;
-              
-              (det as any).estadoItem = 'APROBADO_BODEGA';
-              await queryRunner.manager.save(det);
+          if (stockLibre >= cantidadNecesitada) {
+            det.estadoItem = ItemStatus.APROBADO_BODEGA;
+            await queryRunner.manager.save(det);
 
-              const stockBodega = await queryRunner.manager.findOne(Inventario, {
-                where: { materialId: itemIngresado.materialId, bodegaId: this.BODEGA_CENTRAL_ID }
-              });
+            if (stockBodega) {
+              stockBodega.cantidad_disponible = (stockBodega.cantidad_disponible || 0) - cantidadNecesitada;
+              stockBodega.cantidad_reservada = (stockBodega.cantidad_reservada || 0) + cantidadNecesitada;
+              await queryRunner.manager.save(stockBodega);
+            }
 
-              if (stockBodega) {
-                stockBodega.cantidad_disponible = (stockBodega.cantidad_disponible || 0) - cantidadNecesitada;
-                stockBodega.cantidad_reservada = (stockBodega.cantidad_reservada || 0) + cantidadNecesitada;
-                await queryRunner.manager.save(stockBodega);
-              }
+            requerimientosModificadosIds.add(req.id);
+          } else {
+            const cantidadRestante = cantidadNecesitada - stockLibre;
 
-              // Requerimiento modificado
-              requerimientosModificadosIds.add(req.id);
-            } 
+            det.cantidadSolicitada = stockLibre;
+            det.estadoItem = ItemStatus.APROBADO_BODEGA;
+            await queryRunner.manager.save(det);
+
+            const nuevoDetalle = queryRunner.manager.create(RequirementDetail, {
+              requerimientoId: det.requerimientoId,
+              materialId: det.materialId,
+              cantidadSolicitada: cantidadRestante,
+              cantidadDespachada: 0,
+              estadoItem: ItemStatus.EN_COMPRAS,
+            });
+            await queryRunner.manager.save(nuevoDetalle);
+
+            if (stockBodega) {
+              stockBodega.cantidad_disponible = (stockBodega.cantidad_disponible || 0) - stockLibre;
+              stockBodega.cantidad_reservada = (stockBodega.cantidad_reservada || 0) + stockLibre;
+              await queryRunner.manager.save(stockBodega);
+            }
+
+            requerimientosModificadosIds.add(req.id);
           }
         }
       }
 
-      // ✅ Solución: Iteramos sobre el Set para recalcular los estados maestros
       for (const idReq of requerimientosModificadosIds) {
         await this.recalcularEstadoMaestro(idReq, queryRunner.manager);
       }
 
       await queryRunner.commitTransaction();
     } catch (error) {
-      await queryRunner.rollbackTransaction();
+      if (queryRunner.isTransactionActive) await queryRunner.rollbackTransaction();
+      throw error;
     } finally {
       await queryRunner.release();
     }
-  
   }
-  // 🔥 Máquina de Estados Dinámica (Punto 3)
-  private async recalcularEstadoMaestro(reqId: number, manager: any) {
+
+  private async recalcularEstadoMaestro(reqId: number, manager: EntityManager) {
     const req = await manager.findOne(Requirement, {
       where: { id: reqId },
       relations: { detalles: true },
@@ -340,23 +452,22 @@ export class RequirementsService {
     if (!req || !req.detalles || req.detalles.length === 0) return;
 
     const total = req.detalles.length;
-    const rechazados = req.detalles.filter(d => (d as any).estadoItem === 'RECHAZADO').length;
-    const despachados = req.detalles.filter(d => (d as any).estadoItem === 'DESPACHADO').length;
-    
-    // Si todos fueron rechazados
+    const rechazados = req.detalles.filter(d => d.estadoItem === ItemStatus.RECHAZADO).length;
+    const despachados = req.detalles.filter(d => d.estadoItem === ItemStatus.DESPACHADO).length;
+    const pendientes = req.detalles.filter(d =>
+      d.estadoItem === ItemStatus.PENDIENTE ||
+      d.estadoItem === ItemStatus.APROBADO_BODEGA ||
+      d.estadoItem === ItemStatus.EN_COMPRAS ||
+      d.estadoItem === ItemStatus.EN_TRASLADO,
+    ).length;
+
     if (rechazados === total) {
       req.estado = RequirementStatus.RECHAZADO;
-    } 
-    // Si todo lo que NO fue rechazado ya se despachó (Ej: 3 despachados y 2 rechazados = Terminado)
-    else if (despachados > 0 && (despachados + rechazados === total)) {
+    } else if (despachados > 0 && despachados + rechazados === total) {
       req.estado = RequirementStatus.ATENDIDO;
-    } 
-    // Si ya se despachó algo, pero aún faltan cosas por entregar o comprar
-    else if (despachados > 0 && (despachados + rechazados < total)) {
+    } else if (despachados > 0 && pendientes > 0) {
       req.estado = RequirementStatus.PARCIALMENTE_ATENDIDO;
-    } 
-    // Si nada se ha despachado aún, pero al menos hay ítems aprobados o en compras
-    else if (despachados === 0 && rechazados < total) {
+    } else if (despachados === 0 && rechazados < total) {
       req.estado = RequirementStatus.APROBADO;
     }
 

@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import * as bcrypt from 'bcrypt';
 import { User } from './user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -21,11 +22,16 @@ export class UsersService {
       throw new BadRequestException('El correo electrónico ya se encuentra registrado.');
     }
 
+    if (createUserDto.rol === 'BODEGUERO' && !createUserDto.bodegaAsignadaId) {
+      throw new BadRequestException('Los bodegueros deben tener una bodega asignada.');
+    }
+
     const newUser = this.userRepository.create({
       nombre: createUserDto.nombre,
       email: createUserDto.email,
-      password: createUserDto.password,
+      password: await bcrypt.hash(createUserDto.password, 10),
       rol: createUserDto.rol,
+      bodegaAsignadaId: createUserDto.rol === 'BODEGUERO' ? createUserDto.bodegaAsignadaId : null,
     });
 
     return await this.userRepository.save(newUser);
@@ -61,7 +67,7 @@ export class UsersService {
     return user;
   }
 
-  async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
+  async update(id: string, updateUserDto: UpdateUserDto): Promise<{ user: User; rolChanged: boolean }> {
     const user = await this.findOne(id);
 
     if (updateUserDto.email && updateUserDto.email !== user.email) {
@@ -73,15 +79,24 @@ export class UsersService {
       }
     }
 
-    const dataToUpdate = {
+    const rolChanged = !!updateUserDto.rol && updateUserDto.rol !== user.rol;
+
+    const dataToUpdate: Record<string, any> = {
       ...(updateUserDto.nombre && { nombre: updateUserDto.nombre }),
       ...(updateUserDto.email && { email: updateUserDto.email }),
       ...(updateUserDto.password && { password: updateUserDto.password }),
       ...(updateUserDto.rol && { rol: updateUserDto.rol }),
     };
 
+    if (updateUserDto.rol === 'BODEGUERO' && updateUserDto.bodegaAsignadaId) {
+      dataToUpdate.bodegaAsignadaId = updateUserDto.bodegaAsignadaId;
+    } else if (updateUserDto.rol && updateUserDto.rol !== 'BODEGUERO') {
+      dataToUpdate.bodegaAsignadaId = null;
+    }
+
     const updatedUser = this.userRepository.merge(user, dataToUpdate);
-    return await this.userRepository.save(updatedUser);
+    const saved = await this.userRepository.save(updatedUser);
+    return { user: saved, rolChanged };
   }
 
   async remove(id: string): Promise<any> {

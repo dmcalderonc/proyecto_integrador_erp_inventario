@@ -50,20 +50,24 @@ export class AuthService {
       throw new UnauthorizedException('El usuario está desactivado');
     }
 
-    const payload = { 
-      id: user.id, 
-      sub: user.id, 
-      email: user.email, 
-      rol: user.rol, 
-    };
-    
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token: this.generateToken(user),
       user: { 
         id: user.id, 
         nombre: user.nombre, 
         rol: user.rol 
       }
     };
+  }
+
+  generateToken(user: { id: string; email?: string | null; rol: UserRole | string; bodegaAsignadaId?: number | null }): string {
+    const payload = {
+      id: user.id,
+      sub: user.id,
+      email: user.email,
+      rol: user.rol,
+      bodegaAsignadaId: user.bodegaAsignadaId ?? null,
+    };
+    return this.jwtService.sign(payload);
   }
 }

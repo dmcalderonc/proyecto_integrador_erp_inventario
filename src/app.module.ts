@@ -24,6 +24,7 @@ import { CotizacionesModule } from './cotizaciones/cotizaciones.module';
 import { DespachosModule } from './despachos/despachos.module';
 import { UnidadesMedidaModule } from './unidades-medida/unidades-medida.module';
 import { PublicModule } from './public/public.module';
+import { TraspasosModule } from './traspasos/traspasos.module';
 
 @Module({
   imports: [
@@ -77,6 +78,7 @@ import { PublicModule } from './public/public.module';
     DespachosModule,
     UnidadesMedidaModule,
     PublicModule,
+    TraspasosModule,
   ],
 })
 export class AppModule {}

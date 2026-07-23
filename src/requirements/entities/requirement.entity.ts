@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { User } from '../../users/user.entity';
 import { Proyecto } from '../../proyectos/proyecto.entity';
+import { Bodega } from '../../bodegas/bodegas.entity';
 import { RequirementDetail } from '../entities/requirement-detail.entity';
 
 export enum RequirementStatus {
@@ -48,6 +49,13 @@ export class Requirement {
     default: RequirementStatus.PENDIENTE,
   })
   estado: RequirementStatus;
+
+  @Column({ name: 'bodega_id', type: 'int', nullable: false })
+  bodegaId: number;
+
+  @ManyToOne(() => Bodega, { nullable: false })
+  @JoinColumn({ name: 'bodega_id' })
+  bodega: Bodega;
 
   @OneToMany(() => RequirementDetail, (detalle) => detalle.requirement, {
     cascade: true,

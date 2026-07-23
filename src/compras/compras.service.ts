@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { InjectModel } from '@nestjs/mongoose';
@@ -10,6 +10,8 @@ import { TipoMovimiento } from '../movimientos/entities/movimiento-inventario.en
 import { EventEmitter2 } from '@nestjs/event-emitter';
 @Injectable()
 export class ComprasService {
+  private readonly logger = new Logger(ComprasService.name);
+
   constructor(
     @InjectRepository(OrdenCompra)
     private readonly ocRepository: Repository<OrdenCompra>,
@@ -73,7 +75,11 @@ export class ComprasService {
       throw new BadRequestException(`La orden de compra #${id} ya fue recibida.`);
     }
 
-    orden.estado = 'RECIBIDA';
+    const todosCompletos = (orden.detalles || []).every(
+      (d) => Number(d.cantidad) > 0,
+    );
+
+    orden.estado = todosCompletos ? 'RECIBIDA' : 'RECIBIDA_PARCIAL';
     await this.ocRepository.save(orden);
 
     const detallesMovimiento = (orden.detalles || []).map(d => ({
@@ -86,7 +92,7 @@ export class ComprasService {
         {
           tipo: TipoMovimiento.INGRESO,
           observaciones: `Recepción de OC #${id}`,
-          bodegaDestinoId: 1, // TODO: Agregar campo bodegaDestinoId a OrdenCompra entity
+          bodegaDestinoId: orden.bodegaDestinoId || 1,
           detalles: detallesMovimiento,
         },
         usuarioId,
@@ -102,13 +108,30 @@ export class ComprasService {
         entidad: 'OrdenCompra',
         entidadId: id.toString(),
         usuarioId,
-        detalles: { ordenId: id, estado: 'RECIBIDA' },
+        detalles: { ordenId: id, estado: orden.estado },
       });
     } catch (e) {
-      console.error('Error al registrar auditoría en MongoDB:', e);
+      this.logger.error('Error al registrar auditoría en MongoDB:', e);
     }
 
-    return { message: `Orden de compra #${id} marcada como recibida y stock actualizado.` };
+    return { message: `Orden de compra #${id} marcada como ${orden.estado} y stock actualizado.` };
+  }
+
+  async aprobar(id: number): Promise<OrdenCompra> {
+    const orden = await this.ocRepository.findOne({ where: { id } });
+
+    if (!orden) {
+      throw new NotFoundException(`Orden de compra #${id} no encontrada.`);
+    }
+
+    if (orden.estado !== 'BORRADOR') {
+      throw new BadRequestException(
+        `Solo se pueden aprobar órdenes en estado BORRADOR. Estado actual: ${orden.estado}`,
+      );
+    }
+
+    orden.estado = 'EMITIDA';
+    return await this.ocRepository.save(orden);
   }
 
   async findAll() {

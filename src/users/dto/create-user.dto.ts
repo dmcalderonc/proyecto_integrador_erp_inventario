@@ -1,4 +1,4 @@
-import { IsEmail, IsEnum, IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsEnum, IsNotEmpty, IsString, IsOptional, IsNumber, MinLength } from 'class-validator';
 import { UserRole } from '../user.entity';
 
 export class CreateUserDto {
@@ -16,4 +16,8 @@ export class CreateUserDto {
 
   @IsEnum(UserRole, { message: 'Rol no válido' })
   rol: UserRole;
+
+  @IsOptional()
+  @IsNumber()
+  bodegaAsignadaId?: number;
 }

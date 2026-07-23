@@ -9,6 +9,7 @@ export enum EstadoSolicitud {
     COTIZANDO = 'COTIZANDO',
     APROBADA = 'APROBADA',
     RECHAZADA = 'RECHAZADA',
+    PROCESADO = 'PROCESADO',
 }
 
 export enum NivelPrioridad {
