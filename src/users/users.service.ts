@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from './user.entity';
+import { Bodega } from '../bodegas/bodegas.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
@@ -11,6 +12,8 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Bodega)
+    private readonly bodegaRepository: Repository<Bodega>,
   ) { }
 
   async create(createUserDto: CreateUserDto): Promise<User> {
@@ -26,6 +29,15 @@ export class UsersService {
       throw new BadRequestException('Los bodegueros deben tener una bodega asignada.');
     }
 
+    if (createUserDto.bodegaAsignadaId) {
+      const bodegaExists = await this.bodegaRepository.findOne({
+        where: { id: createUserDto.bodegaAsignadaId },
+      });
+      if (!bodegaExists) {
+        throw new BadRequestException(`La bodega con ID ${createUserDto.bodegaAsignadaId} no existe.`);
+      }
+    }
+
     const newUser = this.userRepository.create({
       nombre: createUserDto.nombre,
       email: createUserDto.email,
@@ -37,7 +49,6 @@ export class UsersService {
     return await this.userRepository.save(newUser);
   }
 
-
   async findByEmailForLogin(email: string): Promise<User | null> {
     return await this.userRepository.findOne({
       where: { email },
@@ -48,17 +59,21 @@ export class UsersService {
         password: true,
         rol: true,
         estado: true,
+        bodegaAsignadaId: true,
       },
     });
   }
 
   async findAll(): Promise<User[]> {
-    return await this.userRepository.find();
+    return await this.userRepository.find({
+      relations: { bodegaAsignada: true },
+    });
   }
 
   async findOne(id: string): Promise<User> {
     const user = await this.userRepository.findOne({
       where: { id },
+      relations: { bodegaAsignada: true },
     });
 
     if (!user) {
@@ -81,14 +96,21 @@ export class UsersService {
 
     const rolChanged = !!updateUserDto.rol && updateUserDto.rol !== user.rol;
 
-    const dataToUpdate: Record<string, any> = {
-      ...(updateUserDto.nombre && { nombre: updateUserDto.nombre }),
-      ...(updateUserDto.email && { email: updateUserDto.email }),
-      ...(updateUserDto.password && { password: updateUserDto.password }),
-      ...(updateUserDto.rol && { rol: updateUserDto.rol }),
-    };
+    const dataToUpdate: Record<string, any> = {};
+
+    if (updateUserDto.nombre) dataToUpdate.nombre = updateUserDto.nombre;
+    if (updateUserDto.email) dataToUpdate.email = updateUserDto.email;
+    if (updateUserDto.password) dataToUpdate.password = await bcrypt.hash(updateUserDto.password, 10);
+    if (updateUserDto.rol) dataToUpdate.rol = updateUserDto.rol;
+    if (typeof updateUserDto.estado === 'boolean') dataToUpdate.estado = updateUserDto.estado;
 
     if (updateUserDto.rol === 'BODEGUERO' && updateUserDto.bodegaAsignadaId) {
+      const bodegaExists = await this.bodegaRepository.findOne({
+        where: { id: updateUserDto.bodegaAsignadaId },
+      });
+      if (!bodegaExists) {
+        throw new BadRequestException(`La bodega con ID ${updateUserDto.bodegaAsignadaId} no existe.`);
+      }
       dataToUpdate.bodegaAsignadaId = updateUserDto.bodegaAsignadaId;
     } else if (updateUserDto.rol && updateUserDto.rol !== 'BODEGUERO') {
       dataToUpdate.bodegaAsignadaId = null;
@@ -103,6 +125,6 @@ export class UsersService {
     const user = await this.findOne(id);
     const userDeleted = { id: user.id, nombre: user.nombre };
     await this.userRepository.remove(user);
-    return userDeleted; 
+    return userDeleted;
   }
 }

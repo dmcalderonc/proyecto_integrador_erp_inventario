@@ -8,6 +8,8 @@ import {
   Put,
   Delete,
   UseGuards,
+  UseInterceptors,
+  ClassSerializerInterceptor,
   Request,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
@@ -21,6 +23,7 @@ import { AuthService } from '../auth/auth.service';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
+@UseInterceptors(ClassSerializerInterceptor)
 export class UsersController {
   constructor(
     private readonly usersService: UsersService,

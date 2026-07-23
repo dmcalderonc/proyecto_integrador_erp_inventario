@@ -1,4 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Exclude } from 'class-transformer';
 import { Bodega } from '../bodegas/bodegas.entity';
 
 export enum UserRole {
@@ -20,6 +21,7 @@ export class User {
   email?: string;
 
   @Column({ type: 'varchar' })
+  @Exclude()
   password?: string;
 
 
