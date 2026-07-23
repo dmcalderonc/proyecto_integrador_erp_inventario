@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
@@ -11,7 +11,7 @@ import { ProyectoUsuario } from '../users/proyecto-usuario.entity';
 
 @Module({
   imports: [
-    UsersModule,
+    forwardRef(() => UsersModule),
     PassportModule,
     JwtModule.register({
       secret:
@@ -22,6 +22,6 @@ import { ProyectoUsuario } from '../users/proyecto-usuario.entity';
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, ProyectoAccessGuard],
-  exports: [ProyectoAccessGuard],
+  exports: [AuthService, ProyectoAccessGuard],
 })
 export class AuthModule {}

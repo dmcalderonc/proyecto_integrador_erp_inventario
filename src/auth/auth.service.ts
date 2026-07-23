@@ -17,7 +17,7 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(registerDto.password, 10);
 
     const user = await this.usersService.create({
-      username: registerDto.username,
+      nombre: registerDto.nombre,
       email: registerDto.email,
       password: hashedPassword,
       rol: UserRole.SOLICITANTE,
@@ -36,58 +36,38 @@ export class AuthService {
 
     const user = await this.usersService.findByEmailForLogin(loginDto.email);
 
-
-    console.log('--- [DEBUG 1] USUARIO ENCONTRADO EN BD ---', user);
-
     if (!user || !user.password) {
-      console.log('--- [DEBUG 2] ERROR: El usuario no existe o la contraseña viene vacía/nula ---');
       throw new UnauthorizedException('Credenciales incorrectas');
     }
 
-
-    let isPasswordValid = false;
-    try {
-      isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
-      console.log('--- [DEBUG 3] ¿La contraseña coincide en bcrypt?:', isPasswordValid);
-    } catch (error) {
-      console.log('--- [DEBUG 4] ERROR al comparar con bcrypt:', error.message);
-      isPasswordValid = false;
-    }
-
-    if (!isPasswordValid) {
-      isPasswordValid = loginDto.password === user.password;
-      console.log('--- [DEBUG 5] ¿La contraseña coincide en texto plano?:', isPasswordValid);
-    }
+    const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
 
     if (!isPasswordValid) {
       throw new UnauthorizedException('Credenciales incorrectas');
     }
 
-    const userAny = user as any;
-    if (userAny.is_active !== undefined && !userAny.is_active) {
-      console.log('--- [DEBUG 6] ERROR: is_active está en false ---');
-      throw new UnauthorizedException('El usuario está desactivado');
-    }
-    if (userAny.estado !== undefined && !userAny.estado) {
-      console.log('--- [DEBUG 7] ERROR: estado está en false ---');
+    if (user.estado !== undefined && !user.estado) {
       throw new UnauthorizedException('El usuario está desactivado');
     }
 
-    const payload = { 
-      id: user.id, 
-      sub: user.id, 
-      email: user.email, 
-      rol: user.rol, 
-      bodega_id: userAny.bodega_id 
-    };
-    
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token: this.generateToken(user),
       user: { 
         id: user.id, 
-        username: user.nombre, 
+        nombre: user.nombre, 
         rol: user.rol 
       }
     };
+  }
+
+  generateToken(user: { id: string; email?: string | null; rol: UserRole | string; bodegaAsignadaId?: number | null }): string {
+    const payload = {
+      id: user.id,
+      sub: user.id,
+      email: user.email,
+      rol: user.rol,
+      bodegaAsignadaId: user.bodegaAsignadaId ?? null,
+    };
+    return this.jwtService.sign(payload);
   }
 }
